@@ -1,0 +1,3 @@
+tests/sqlite3.c
+tests/tinywl.c
+build

@@ -6,6 +6,7 @@ project('text-edit', 'c', 'cpp',
 textmate_files = [
   'textmate.c',
   'parser.c',
+  'theme.c',
   'reader_cjson.c'
 ]
 

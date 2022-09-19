@@ -49,7 +49,18 @@ static TxState match_patterns(char_u *buffer_start, char_u *buffer_end,
     TxSyntax *pattern_syntax = txn_syntax_value(p);
 
     if (!pattern_syntax->include && pattern_syntax->include_external) {
-      // todo request external syntax
+
+      TxNode *include_node = txn_get(pattern_syntax, "include");
+      if (include_node && include_node->string_value) {
+        char_u *path = include_node->string_value;
+
+        // todo request external syntax
+        // resolve source scope
+        // resolve #hash
+        // tx_syntax_from_scope
+        // resolve #hash from local repository
+      }
+
       printf("request external syntax\n");
     }
 

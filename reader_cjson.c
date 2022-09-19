@@ -6,13 +6,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#define MAX_PATH_LENGTH 1024
-#ifndef _WIN32
-#define DIR_SEPARATOR '/'
-#else
-#define DIR_SEPARATOR '\\'
-#endif
-
 static void post_process_syntax(TxSyntaxNode *n) {
   TxSyntax *syntax = txn_syntax_value(n);
   TxNode *root = txn_root(n);
@@ -29,11 +22,7 @@ static void post_process_syntax(TxSyntaxNode *n) {
       } else {
         // external?
         syntax->include_external = true;
-
         printf("external %s\n", path);
-
-        TxNode *global_repository = tx_global_repository();
-        txn_set(global_repository, path, txn_new_syntax());
       }
 
       if (repo_node) {
@@ -53,6 +42,12 @@ static void post_process_syntax(TxSyntaxNode *n) {
   }
 }
 
+/*
+* parsed syntax must:
+* 1. resolve local includes
+* 2. pre-compile regex
+* 3. set pointers to nodes in TxSyntax
+*/
 static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   TxSyntax *syntax = txn_syntax_value(node);
 
@@ -195,6 +190,11 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   }
 }
 
+/*
+* parsed package must:
+* 1. set pointers to nodes in TxPackage (grammars, languages, themes)
+* 2. languages must resolve scope_name
+*/
 static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
   char_u *base_path = path;
   TxPackage *package = txn_package_value(node);
@@ -202,10 +202,12 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
   if (!grammars_node) {
     grammars_node = txn_set(node, "grammars", txn_new_object());
   }
+  package->grammars = grammars_node;
   TxNode *languages_node = txn_get(node, "languages");
   if (!languages_node) {
     languages_node = txn_set(node, "languages", txn_new_object());
   }
+  package->languages = languages_node;
 
   // keys
   {
@@ -298,6 +300,18 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
             TxNode *filenames_node =
                 txn_set(language_node, "filenames", txn_new_array());
 
+            // resolve grammar scope_name
+            TxNode *grammar_child = grammars_node->first_child;
+            while(grammar_child) {
+              TxNode *id = txn_get(grammar_child, "language");
+              TxNode *scope = txn_get(grammar_child, "scopeName");
+              if (scope && id && strcmp(id->string_value, language_id) == 0) {
+                txn_set(language_node, "scopeName", txn_new_string(scope->string_value));
+                break;
+              }
+              grammar_child = grammar_child->next_sibling;
+            }
+
             // extensions
             cJSON *extensions =
                 cJSON_GetObjectItem(language_item, "extensions");
@@ -369,6 +383,10 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   return root;
 }
 
+TxThemeNode* txn_load_theme(char_u* path) {
+  return NULL;
+}
+
 TxPackageNode *txn_load_package(char_u *path) {
   FILE *fp = fopen(path, "r");
 
@@ -412,10 +430,12 @@ void tx_read_package_dir(char *path) {
                 relative_path);
       }
       sprintf(package_path, "%s%cpackage.json", full_path, DIR_SEPARATOR);
-      printf("%s\n", package_path);
+
+      // printf("%s\n", package_path);
 
       TxPackageNode *pkn = txn_load_package(package_path);
       if (pkn) {
+        // dump(pkn, 0);
         txn_push(tx_global_packages(), pkn);
       }
     }

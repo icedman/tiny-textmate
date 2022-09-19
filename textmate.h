@@ -14,6 +14,11 @@ extern void (*tx_free)(void *);
 
 void tx_set_allocator(void *(*custom_malloc)(size_t), void (*custom_free)(void *));
 
+#define TX_TYPE_NODE    0
+#define TX_TYPE_SYNTAX  1
+#define TX_TYPE_PACKAGE 2
+#define TX_TYPE_THEME   3
+
 typedef enum {
   TxTypeNull,
   TxTypeValue,
@@ -24,8 +29,9 @@ typedef enum {
 } TxValueType;
 
 typedef struct _TxNode {
-  int32_t index;
   TxValueType type;
+  int32_t object_type;
+  int32_t index;
   char *name;
   int32_t number_value;
   double double_value;
@@ -42,6 +48,7 @@ typedef struct _TxNode {
 
 typedef TxNode TxSyntaxNode;
 typedef TxNode TxPackageNode;
+typedef TxNode TxThemeNode;
 
 typedef struct _TxSyntax {
   TxSyntaxNode *self;
@@ -76,6 +83,10 @@ typedef struct {
   TxNode* languages;
   TxNode* themes;
 } TxPackage;
+
+typedef struct {
+  TxThemeNode *self;
+} TxTheme;
 
 #define TS_MAX_MATCHES 32
 #define TS_MAX_STACK_DEPTH 16
@@ -128,6 +139,10 @@ TxPackageNode* txn_new_package();
 TxPackageNode* txn_load_package(char_u* path);
 TxPackage* txn_package_value(TxPackageNode* pkn);
 
+TxThemeNode* txn_new_theme();
+TxThemeNode* txn_load_theme(char_u* path);
+TxTheme* txn_theme_value(TxThemeNode* pkn);
+
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end, TxStateStack *stack);
 
 void txs_init_stack(TxStateStack *stack);
@@ -158,5 +173,15 @@ regex_t* tx_compile_pattern(char_u *pattern);
 #define TX_TIMER_END                                                           \
   _end = clock();                                                              \
   _cpu_time_used = ((double)(_end - _start)) / CLOCKS_PER_SEC;
+
+#ifndef MAX_PATH_LENGTH
+#define MAX_PATH_LENGTH 1024
+#endif
+
+#ifndef _WIN32
+#define DIR_SEPARATOR '/'
+#else
+#define DIR_SEPARATOR '\\'
+#endif
 
 #endif // TEXTMATE_H

@@ -7,6 +7,7 @@ textmate_files = [
   'textmate.c',
   'parser.c',
   'theme.c',
+  'package.c',
   'reader_cjson.c'
 ]
 
@@ -16,7 +17,7 @@ textmate_inc = [
 
 cjson_files = [
   './cJSON/cJSON.c',
-  './cJSON/cJSON_Utils.c'
+  # './cJSON/cJSON_Utils.c'
 ]
 
 cjson_inc = [

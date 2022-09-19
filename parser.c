@@ -117,9 +117,20 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
 
   TxMatchRange *matches = state->matches;
 
+  TxCapture capture_list[TS_MAX_CAPTURES];
+
   char key[64];
   for (int j = 1; j < state->count; j++) {
-    sprintf(key, "%d", (j - 1));
+    int capture_idx = (j - 1);
+    TxCapture *capture = &capture_list[capture_idx];
+
+    capture->buffer = buffer_start;
+    capture->start = matches[j].start;
+    capture->end = matches[j].end;
+    capture->scope = NULL;
+    capture->expanded[0] = NULL;
+
+    sprintf(key, "%d", capture_idx);
 
     TxSyntaxNode *node = txn_get(captures, key);
     if (!node)
@@ -139,18 +150,45 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
         matched = find_match(start, start + len, syntax->rx_match, NULL);
       }
       if (matched) {
-        printf("------ [%s]\n", name->string_value);
+        capture->scope = name->string_value;
+        strcpy(capture->expanded, name->string_value);
       }
     }
+  }
 
-    // todo processor
+  // expand scopes
+  for (int j = 1; j < state->count; j++) {
+    int capture_idx = (j - 1);
+    TxCapture *capture = &capture_list[capture_idx];
 
-    // char tmp[128] = "";
-    // if (len == 0)
-    //   continue;
-    // memcpy(tmp, buffer_start + matches[j].start, len * sizeof(char_u));
-    // tmp[len] = 0;
-    // printf("(%ld-%ld) %s\n", matches[j].start, matches[j].end, tmp);
+    if (!capture->scope) {
+      continue;
+
+    }
+
+    char_u trailer[TS_MAX_SCOPE_LENGTH];
+    char_u* trailer_advanced = NULL;
+    char_u* placeholder = NULL;
+    while(placeholder = strchr(capture->expanded, '$')) {
+      strcpy(trailer, placeholder);
+      trailer_advanced = strchr(trailer, '.');
+      if (!trailer_advanced) {
+        trailer_advanced = trailer;
+      }
+      int capture_idx = atoi(placeholder+1)-1;
+
+      char_u replace[TS_MAX_SCOPE_LENGTH] = "???";
+      int len = capture_list[capture_idx].end - capture_list[capture_idx].start;
+      if (len != 0) {
+        memcpy(replace,
+          capture_list[capture_idx].buffer + capture_list[capture_idx].start,
+          len * sizeof(char_u));
+      }
+
+      sprintf(capture->expanded + (placeholder-capture->expanded), "%s%s", replace, trailer_advanced);
+    }
+
+    printf("(%ld-%ld) [%s]\n", capture->start, capture->end, capture->expanded);
   }
 }
 

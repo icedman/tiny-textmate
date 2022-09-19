@@ -19,6 +19,8 @@ void tx_set_allocator(void *(*custom_malloc)(size_t), void (*custom_free)(void *
 #define TX_TYPE_PACKAGE 2
 #define TX_TYPE_THEME   3
 
+// #define TX_ENABLE_SERIALIZATION
+
 typedef enum {
   TxTypeNull,
   TxTypeValue,
@@ -52,6 +54,7 @@ typedef TxNode TxThemeNode;
 
 typedef struct _TxSyntax {
   TxSyntaxNode *self;
+  uint32_t registry_id;
 
   TxSyntaxNode *repository;
 
@@ -90,11 +93,21 @@ typedef struct {
 
 #define TS_MAX_MATCHES 32
 #define TS_MAX_STACK_DEPTH 16
+#define TS_MAX_CAPTURES 16
+#define TS_MAX_SCOPE_LENGTH 128
 
 typedef struct {
   size_t start;
   size_t end;
 } TxMatchRange;
+
+typedef struct {
+  char_u* buffer;
+  size_t start;
+  size_t end;
+  char_u* scope;
+  char_u expanded[TS_MAX_SCOPE_LENGTH];
+} TxCapture;
 
 typedef struct {
   TxSyntax *syntax;
@@ -134,6 +147,10 @@ TxNode *txn_root(TxNode *node);
 TxSyntaxNode* txn_new_syntax();
 TxSyntaxNode* txn_load_syntax(char_u* path);
 TxSyntax* txn_syntax_value(TxSyntaxNode* syn);
+
+uint32_t txsr_register(TxSyntax* syntax);
+void txsr_unregister(TxSyntax* syntax);
+TxSyntax* txsr_syntax(uint32_t id);
 
 TxPackageNode* txn_new_package();
 TxPackageNode* txn_load_package(char_u* path);

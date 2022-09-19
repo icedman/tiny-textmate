@@ -6,6 +6,11 @@
 static TxSyntaxNode *global_repository = NULL;
 static TxNode *global_packages = NULL;
 
+#define TXSR_BUCKET_INCREMENTS 2500
+static TxSyntax **global_syntax_registry = NULL;
+static int32_t gsr_bucket = 0;
+static int32_t gsr_count = 0;
+
 regex_t *tx_compile_pattern(char_u *pattern) {
   regex_t *regex;
   OnigErrorInfo einfo;
@@ -236,6 +241,7 @@ static void destroy_syntax(TxNode *node) {
     }
   }
 
+  txsr_unregister(syntax);
   tx_free(syntax);
   syntax_node->data = NULL;
 }
@@ -249,11 +255,53 @@ TxSyntaxNode *txn_new_syntax() {
   syntax->self = node;
   node->data = (void *)syntax;
   node->destroy = destroy_syntax;
+
+  txsr_register(syntax);
   return node;
 }
 
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn) {
   return syn->object_type == TX_TYPE_SYNTAX ? (TxSyntax *)syn->data : NULL;
+}
+
+uint32_t txsr_register(TxSyntax* syntax)
+{
+#ifdef TX_ENABLE_SERIALIZATION
+  // resize
+  if (gsr_count == gsr_bucket) {
+    gsr_bucket += TXSR_BUCKET_INCREMENTS;
+    TxSyntax *n = tx_malloc(sizeof(TxSyntax*) * gsr_bucket);
+    if (gsr_count && global_syntax_registry) {
+      memcpy(n, global_syntax_registry, sizeof(TxSyntax*) * gsr_count);
+      tx_free(global_syntax_registry);
+    }
+    global_syntax_registry = n;
+  }
+
+  global_syntax_registry[gsr_count] = syntax;
+  syntax->registry_id = 0xff + gsr_count++;
+  // printf("%d\n", syntax->registry_id);
+#endif
+  return syntax->registry_id;
+}
+
+void txsr_unregister(TxSyntax* syntax)
+{
+#ifdef TX_ENABLE_SERIALIZATION
+  global_syntax_registry[syntax->registry_id - 0xff] = 0;
+#endif
+}
+
+TxSyntax* txsr_syntax(uint32_t id)
+{
+#ifdef TX_ENABLE_SERIALIZATION
+  if (id - 0xff >= gsr_count) {
+    return NULL;
+  }
+  return global_syntax_registry[id - 0xff];
+#else
+  return NULL;
+#endif
 }
 
 TxPackageNode *txn_new_package() {
@@ -332,6 +380,10 @@ void tx_shutdown() {
     txn_free(global_packages);
     global_packages = NULL;
   }
+  if (global_syntax_registry) {
+    tx_free(global_syntax_registry);
+    global_syntax_registry = NULL;
+  }
 }
 
 TxSyntaxNode *tx_global_repository() {
@@ -346,109 +398,6 @@ TxNode *tx_global_packages() {
     global_packages = txn_new_array();
   }
   return global_packages;
-}
-
-TxSyntaxNode *tx_syntax_from_path(char_u *path) {
-  char_u file_name[MAX_PATH_LENGTH] = "";
-
-  // extract filename
-  char_u *last_separator = strrchr(path, DIR_SEPARATOR);
-  if (last_separator) {
-    strcpy(file_name, last_separator + 1);
-  } else {
-    strcpy(file_name, path);
-  }
-
-  // extract extension
-  char_u *extension = strrchr(file_name, '.');
-  // printf("%s %s\n", file_name, extension);
-
-  TxNode* packages = tx_global_packages();
-  TxNode* language = NULL;
-
-  // query languages
-  TxNode* child = packages->first_child;
-  while(child) {
-    TxPackage *pk = txn_package_value(child);
-    TxNode* languages = pk->languages;
-    if (languages) {
-      TxNode *lang_child = languages->first_child;
-      while(lang_child) {
-        TxNode *lang_filenames = txn_get(lang_child, "filenames");
-        if (lang_filenames) {
-          TxNode *fname_child = lang_filenames->first_child;
-          while(fname_child) {
-            if (strcmp(fname_child->string_value, file_name) == 0) {
-              language = lang_child;
-              goto lang_found;
-            }
-            fname_child = fname_child->next_sibling;
-          }
-        }
-        TxNode *lang_extensions = txn_get(lang_child, "extensions");
-        if (lang_extensions && extension) {
-          TxNode *ext_child = lang_extensions->first_child;
-          while(ext_child) {
-            if (strcmp(ext_child->string_value, extension) == 0) {
-              language = lang_child;
-              goto lang_found;
-            }
-            ext_child = ext_child->next_sibling;
-          }
-        }
-        lang_child = lang_child->next_sibling;
-      }
-    }
-    child = child->next_sibling;
-  }
-
-  lang_found:
-
-  if (language) {
-    TxNode* scope = txn_get(language, "scopeName");
-    if (scope) {
-      printf("found %s\n", scope->string_value);
-      return tx_syntax_from_scope(scope->string_value);
-    }
-  }
-
-  printf("not found!\n");
-  return NULL;
-}
-
-TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
-  // check global repository
-  TxSyntaxNode *syntax_node = txn_get(tx_global_repository(), scope);
-  if (syntax_node) {
-    printf("found at repository!\n");
-    return syntax_node;
-  }
-
-  // check packages
-  TxNode* packages = tx_global_packages();
-  TxNode* child = packages->first_child;
-  while(child) {
-    TxPackage *pk = txn_package_value(child);
-    TxNode* grammars = pk->grammars;
-    if (grammars) {
-      TxNode* grammar_node = txn_get(grammars, scope);
-      if (grammar_node) {
-        TxNode* path = txn_get(grammar_node, "fullPath");
-        if (path) {
-          TxSyntaxNode* syntax_node = txn_load_syntax(path->string_value);
-          if (syntax_node) {
-            printf("found at package!\n");
-            txn_set(tx_global_repository(), scope, syntax_node);
-          } else {
-            // dummy syntax
-            txn_set(tx_global_repository(), scope, txn_new_syntax());
-          }
-        }
-      }
-    }
-    child = child->next_sibling;
-  }
-  return NULL;
 }
 
 void tx_stats() {

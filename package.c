@@ -1,4 +1,6 @@
 #include "textmate.h"
+#include <stdio.h>
+#include <string.h>
 
 TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   char_u file_name[MAX_PATH_LENGTH] = "";
@@ -64,6 +66,7 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
     }
   }
 
+  // leak?
   printf("not found!\n");
   return NULL;
 }
@@ -93,6 +96,7 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
             txn_set(tx_global_repository(), scope, syntax_node);
           } else {
             // dummy syntax
+            // leak?
             txn_set(tx_global_repository(), scope, txn_new_syntax());
           }
         }

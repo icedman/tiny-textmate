@@ -16,8 +16,6 @@ void tx_set_allocator(void *(*custom_malloc)(size_t), void (*custom_free)(void *
 
 #define TX_TYPE_NODE    0
 #define TX_TYPE_SYNTAX  1
-#define TX_TYPE_PACKAGE 2
-#define TX_TYPE_THEME   3
 
 // #define TX_ENABLE_SERIALIZATION
 
@@ -29,6 +27,12 @@ typedef enum {
   TxTypeObject,
   TxTypeArray,
 } TxValueType;
+
+typedef enum {
+  TxObjectPackage,
+  TxObjectTheme,
+  TxObjectSyntax,
+} TxObjectType;
 
 typedef struct _TxNode {
   TxValueType type;
@@ -49,8 +53,6 @@ typedef struct _TxNode {
 } TxNode;
 
 typedef TxNode TxSyntaxNode;
-typedef TxNode TxPackageNode;
-typedef TxNode TxThemeNode;
 
 typedef struct _TxSyntax {
   TxSyntaxNode *self;
@@ -81,15 +83,24 @@ typedef struct _TxSyntax {
 } TxSyntax;
 
 typedef struct {
-  TxPackageNode *self;
   TxNode* grammars;
   TxNode* languages;
   TxNode* themes;
 } TxPackage;
 
 typedef struct {
-  TxThemeNode *self;
+  int32_t id;
 } TxTheme;
+
+typedef struct {
+  TxNode self;
+  TxTheme theme;
+} TxThemeNode;
+
+typedef struct {
+  TxNode self;
+  TxPackage package;
+} TxPackageNode;
 
 #define TS_MAX_MATCHES 32
 #define TS_MAX_STACK_DEPTH 16
@@ -108,6 +119,8 @@ typedef struct {
   char_u* scope;
   char_u expanded[TS_MAX_SCOPE_LENGTH];
 } TxCapture;
+
+typedef TxCapture TxCaptureList[TS_MAX_CAPTURES];
 
 typedef struct {
   TxSyntax *syntax;

@@ -40,11 +40,12 @@ int test_packages(int argc, char **argv) {
     path = argv[1];
   }
 
+  // todo leak
   tx_read_package_dir(path);
   tx_syntax_from_path("/x/Makefile");
-  tx_syntax_from_path("/x/test.xc");
-  tx_syntax_from_path("/x/test.c");
-  tx_syntax_from_scope("source.c");
+  // tx_syntax_from_path("/x/test.xc");
+  // tx_syntax_from_path("/x/test.c");
+  // tx_syntax_from_scope("source.c");
   // dump(tx_global_packages(), 0);
 
   printf("packages loaded at %fsecs\n", _cpu_time_used);

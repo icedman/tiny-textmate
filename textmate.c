@@ -23,16 +23,22 @@ regex_t *tx_compile_pattern(char_u *pattern) {
   return regex;
 }
 
+static uint32_t _nodes_allocated = 0;
+static uint32_t _nodes_freed = 0;
+static uint32_t _allocated = 0;
+static uint32_t _freed = 0;
+
 static void *tx_malloc_default(size_t size) {
   void *result = malloc(size);
   if (size > 0 && !result) {
     fprintf(stderr, "textmate failed to allocate %zu bytes", size);
     exit(1);
   }
+  _allocated++;
   return result;
 }
 
-static void tx_free_default(void *data) { free(data); }
+static void tx_free_default(void *data) { _freed++; free(data); }
 
 void *(*tx_malloc)(size_t) = tx_malloc_default;
 void (*tx_free)(void *) = tx_free_default;
@@ -42,9 +48,6 @@ void tx_set_allocator(void *(*custom_malloc)(size_t),
   tx_malloc = custom_malloc;
   tx_free = custom_free;
 }
-
-static uint32_t _nodes_allocated = 0;
-static uint32_t _nodes_freed = 0;
 
 TxNode *txn_new(char_u *name, TxValueType type) {
   TxNode *node = tx_malloc(sizeof(TxNode));
@@ -124,17 +127,20 @@ void *txn_value(TxNode *node) { return node->data; }
 
 void txn_free(TxNode *node) {
   _nodes_freed++;
-  if (node->name) {
-    tx_free(node->name);
-  }
   if (node->destroy) {
     node->destroy(node);
   }
+  if (node->name) {
+    tx_free(node->name);
+    node->name = NULL;
+  }
   if (node->data) {
     tx_free(node->data);
+    node->data = NULL;
   }
   if (node->string_value) {
     tx_free(node->string_value);
+    node->string_value = NULL;
   }
   tx_free(node);
 
@@ -305,33 +311,27 @@ TxSyntax* txsr_syntax(uint32_t id)
 }
 
 TxPackageNode *txn_new_package() {
-  TxPackageNode *node = txn_new_object();
-  node->object_type = TX_TYPE_PACKAGE;
-
-  TxPackage *package = tx_malloc(sizeof(TxPackage));
-  memset(package, 0, sizeof(TxPackage));
-  package->self = node;
-  node->data = package;
+  TxPackageNode *node = tx_malloc(sizeof(TxPackageNode));
+  memset(node, 0, sizeof(TxPackageNode));
+  node->self.type = TxTypeObject;
+  node->self.object_type = TxObjectPackage;
   return node;
 }
 
-TxPackage *txn_package_value(TxPackageNode *pkn) {
-  return pkn->object_type == TX_TYPE_PACKAGE ? (TxPackage *)pkn->data : NULL;
+TxPackage *txn_package_value(TxPackageNode *node) {
+  return node->self.object_type == TxObjectPackage ? &node->package : NULL;
 }
 
 TxThemeNode *txn_new_theme() {
-  TxThemeNode *node = txn_new_object();
-  node->object_type = TX_TYPE_THEME;
-
-  TxTheme *theme = tx_malloc(sizeof(TxTheme));
-  memset(theme, 0, sizeof(TxTheme));
-  theme->self = node;
-  node->data = theme;
+  TxThemeNode *node = tx_malloc(sizeof(TxThemeNode));
+  memset(node, 0, sizeof(TxThemeNode));
+  node->self.type = TxTypeObject;
+  node->self.object_type = TxObjectTheme;
   return node;
 }
 
-TxTheme *txn_theme_value(TxThemeNode *thm) {
-  return thm->object_type == TX_TYPE_THEME ? (TxTheme *)thm->data : NULL;
+TxTheme *txn_theme_value(TxThemeNode *node) {
+  return node->self.object_type == TxObjectTheme ? &node->theme : NULL;
 }
 
 void txs_init_stack(TxStateStack *stack) {
@@ -401,5 +401,6 @@ TxNode *tx_global_packages() {
 }
 
 void tx_stats() {
-  printf("-----\nallocated: %d\nfreed: %d\n", _nodes_allocated, _nodes_freed);
+  printf("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated, _nodes_freed);
+  printf("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
 }

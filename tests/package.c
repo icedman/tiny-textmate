@@ -26,7 +26,6 @@ int test_single_package(int argc, char **argv) {
   txn_free(root);
   tx_stats();
 
-  tx_read_package_dir("/home/iceman/.editor/extensions/");
   return 0;
 }
 

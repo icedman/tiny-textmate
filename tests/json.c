@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
-  TxSyntaxNode *root = txn_load_syntax("./c.json");
+  TxSyntaxNode *root = txn_load_syntax("./tests/c.json");
 
   TX_TIMER_END
   
@@ -19,6 +19,8 @@ int main(int argc, char **argv) {
   printf("grammar loaded at %fsecs\n", _cpu_time_used);
 
   txn_free(root);
+
+  tx_shutdown();
   tx_stats();
 
   return 0;

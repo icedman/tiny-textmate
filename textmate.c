@@ -30,11 +30,11 @@ static uint32_t _freed = 0;
 
 static void *tx_malloc_default(size_t size) {
   void *result = malloc(size);
+  _allocated++;
   if (size > 0 && !result) {
     fprintf(stderr, "textmate failed to allocate %zu bytes", size);
     exit(1);
   }
-  _allocated++;
   return result;
 }
 
@@ -65,7 +65,7 @@ char_u *txn_set_name(TxNode *node, char_u *name) {
   }
   if (name) {
     size_t len = strlen(name);
-    node->name = malloc(sizeof(char_u) * (len + 1));
+    node->name = tx_malloc(sizeof(char_u) * (len + 1));
     strcpy((char_u *)node->name, name);
   }
   return node->name;
@@ -104,7 +104,7 @@ void txn_set_string_value(TxNode *node, char_u *string) {
   }
   if (string) {
     size_t len = strlen(string);
-    node->string_value = malloc(sizeof(char_u) * (len + 1));
+    node->string_value = tx_malloc(sizeof(char_u) * (len + 1));
     strcpy((char_u *)node->string_value, string);
   }
 }

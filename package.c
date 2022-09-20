@@ -17,21 +17,21 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   char_u *extension = strrchr(file_name, '.');
   // printf("%s %s\n", file_name, extension);
 
-  TxNode* packages = tx_global_packages();
-  TxNode* language = NULL;
+  TxNode *packages = tx_global_packages();
+  TxNode *language = NULL;
 
   // query languages
-  TxNode* child = packages->first_child;
-  while(child) {
+  TxNode *child = packages->first_child;
+  while (child) {
     TxPackage *pk = txn_package_value(child);
-    TxNode* languages = pk->languages;
+    TxNode *languages = pk->languages;
     if (languages) {
       TxNode *lang_child = languages->first_child;
-      while(lang_child) {
+      while (lang_child) {
         TxNode *lang_filenames = txn_get(lang_child, "filenames");
         if (lang_filenames) {
           TxNode *fname_child = lang_filenames->first_child;
-          while(fname_child) {
+          while (fname_child) {
             if (strcmp(fname_child->string_value, file_name) == 0) {
               language = lang_child;
               goto lang_found;
@@ -42,7 +42,7 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
         TxNode *lang_extensions = txn_get(lang_child, "extensions");
         if (lang_extensions && extension) {
           TxNode *ext_child = lang_extensions->first_child;
-          while(ext_child) {
+          while (ext_child) {
             if (strcmp(ext_child->string_value, extension) == 0) {
               language = lang_child;
               goto lang_found;
@@ -56,17 +56,16 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
     child = child->next_sibling;
   }
 
-  lang_found:
+lang_found:
 
   if (language) {
-    TxNode* scope = txn_get(language, "scopeName");
+    TxNode *scope = txn_get(language, "scopeName");
     if (scope) {
       printf("found %s\n", scope->string_value);
       return tx_syntax_from_scope(scope->string_value);
     }
   }
 
-  // leak?
   printf("not found!\n");
   return NULL;
 }
@@ -80,23 +79,22 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
   }
 
   // check packages
-  TxNode* packages = tx_global_packages();
-  TxNode* child = packages->first_child;
-  while(child) {
+  TxNode *packages = tx_global_packages();
+  TxNode *child = packages->first_child;
+  while (child) {
     TxPackage *pk = txn_package_value(child);
-    TxNode* grammars = pk->grammars;
+    TxNode *grammars = pk->grammars;
     if (grammars) {
-      TxNode* grammar_node = txn_get(grammars, scope);
+      TxNode *grammar_node = txn_get(grammars, scope);
       if (grammar_node) {
-        TxNode* path = txn_get(grammar_node, "fullPath");
+        TxNode *path = txn_get(grammar_node, "fullPath");
         if (path) {
-          TxSyntaxNode* syntax_node = txn_load_syntax(path->string_value);
+          TxSyntaxNode *syntax_node = txn_load_syntax(path->string_value);
           if (syntax_node) {
             printf("found at package!\n");
             txn_set(tx_global_repository(), scope, syntax_node);
           } else {
             // dummy syntax
-            // leak?
             txn_set(tx_global_repository(), scope, txn_new_syntax());
           }
         }

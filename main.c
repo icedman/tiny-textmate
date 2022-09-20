@@ -24,10 +24,9 @@ int main(int argc, char **argv) {
     grammar_path = argv[2];
   }
 
-  TxNode *global_repository = tx_global_repository();
   TxSyntaxNode *root = txn_load_syntax(grammar_path);
   // TxSyntaxNode *root = txn_load_syntax("./tests/cpp.json");
-  txn_set(global_repository, "source.c", root);
+  txn_set(tx_global_repository(), "source.c", root);
 
   TX_TIMER_END
   printf("grammar loaded at %fsecs\n", _cpu_time_used);

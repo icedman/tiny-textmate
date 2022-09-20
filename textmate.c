@@ -6,11 +6,6 @@
 static TxSyntaxNode *global_repository = NULL;
 static TxNode *global_packages = NULL;
 
-#define TXSR_BUCKET_INCREMENTS 2500
-static TxSyntax **global_syntax_registry = NULL;
-static int32_t gsr_bucket = 0;
-static int32_t gsr_count = 0;
-
 regex_t *tx_compile_pattern(char_u *pattern) {
   regex_t *regex;
   OnigErrorInfo einfo;
@@ -38,7 +33,10 @@ static void *tx_malloc_default(size_t size) {
   return result;
 }
 
-static void tx_free_default(void *data) { _freed++; free(data); }
+static void tx_free_default(void *data) {
+  _freed++;
+  free(data);
+}
 
 void *(*tx_malloc)(size_t) = tx_malloc_default;
 void (*tx_free)(void *) = tx_free_default;
@@ -142,7 +140,6 @@ void txn_free(TxNode *node) {
     tx_free(node->string_value);
     node->string_value = NULL;
   }
-  tx_free(node);
 
   // arrays and objects have children to be freed
   TxNode *child = node->first_child;
@@ -151,6 +148,8 @@ void txn_free(TxNode *node) {
     txn_free(child);
     child = next_sibling;
   }
+
+  tx_free(node);
 }
 
 TxNode *txn_push(TxNode *node, TxNode *child) {
@@ -226,8 +225,7 @@ TxNode *txn_get(TxNode *node, char_u *key) {
 
 static void destroy_syntax(TxNode *node) {
   TxSyntaxNode *syntax_node = (TxSyntaxNode *)node;
-  TxSyntax *syntax = (TxSyntax *)syntax_node->data;
-  // free all syntax allocs here
+  TxSyntax *syntax = txn_syntax_value(syntax_node);
 
   regex_t **regexes[] = {&syntax->rx_first_line_match,
                          &syntax->rx_folding_start_marker,
@@ -246,75 +244,30 @@ static void destroy_syntax(TxNode *node) {
       *regexes[i] = NULL;
     }
   }
-
-  txsr_unregister(syntax);
-  tx_free(syntax);
-  syntax_node->data = NULL;
 }
 
 TxSyntaxNode *txn_new_syntax() {
-  TxSyntaxNode *node = txn_new_object();
-  node->object_type = TX_TYPE_SYNTAX;
-
-  TxSyntax *syntax = tx_malloc(sizeof(TxSyntax));
-  memset(syntax, 0, sizeof(TxSyntax));
-  syntax->self = node;
-  node->data = (void *)syntax;
-  node->destroy = destroy_syntax;
-
-  txsr_register(syntax);
+  TxSyntaxNode *node = tx_malloc(sizeof(TxSyntaxNode));
+  _nodes_allocated++;
+  memset(node, 0, sizeof(TxSyntaxNode));
+  node->self.type = TxTypeObject;
+  node->self.object_type = TxObjectSyntax;
+  node->self.destroy = destroy_syntax;
+  node->syntax.self = node;
   return node;
 }
 
-TxSyntax *txn_syntax_value(TxSyntaxNode *syn) {
-  return syn->object_type == TX_TYPE_SYNTAX ? (TxSyntax *)syn->data : NULL;
-}
-
-uint32_t txsr_register(TxSyntax* syntax)
-{
-#ifdef TX_ENABLE_SERIALIZATION
-  // resize
-  if (gsr_count == gsr_bucket) {
-    gsr_bucket += TXSR_BUCKET_INCREMENTS;
-    TxSyntax *n = tx_malloc(sizeof(TxSyntax*) * gsr_bucket);
-    if (gsr_count && global_syntax_registry) {
-      memcpy(n, global_syntax_registry, sizeof(TxSyntax*) * gsr_count);
-      tx_free(global_syntax_registry);
-    }
-    global_syntax_registry = n;
-  }
-
-  global_syntax_registry[gsr_count] = syntax;
-  syntax->registry_id = 0xff + gsr_count++;
-  // printf("%d\n", syntax->registry_id);
-#endif
-  return syntax->registry_id;
-}
-
-void txsr_unregister(TxSyntax* syntax)
-{
-#ifdef TX_ENABLE_SERIALIZATION
-  global_syntax_registry[syntax->registry_id - 0xff] = 0;
-#endif
-}
-
-TxSyntax* txsr_syntax(uint32_t id)
-{
-#ifdef TX_ENABLE_SERIALIZATION
-  if (id - 0xff >= gsr_count) {
-    return NULL;
-  }
-  return global_syntax_registry[id - 0xff];
-#else
-  return NULL;
-#endif
+TxSyntax *txn_syntax_value(TxSyntaxNode *node) {
+  return node->self.object_type == TxObjectSyntax ? &node->syntax : NULL;
 }
 
 TxPackageNode *txn_new_package() {
   TxPackageNode *node = tx_malloc(sizeof(TxPackageNode));
+  _nodes_allocated++;
   memset(node, 0, sizeof(TxPackageNode));
   node->self.type = TxTypeObject;
   node->self.object_type = TxObjectPackage;
+  node->package.self = node;
   return node;
 }
 
@@ -324,9 +277,11 @@ TxPackage *txn_package_value(TxPackageNode *node) {
 
 TxThemeNode *txn_new_theme() {
   TxThemeNode *node = tx_malloc(sizeof(TxThemeNode));
+  _nodes_allocated++;
   memset(node, 0, sizeof(TxThemeNode));
   node->self.type = TxTypeObject;
   node->self.object_type = TxObjectTheme;
+  node->theme.self = node;
   return node;
 }
 
@@ -368,7 +323,9 @@ void tx_initialize() {
   OnigEncoding use_encs[1];
   use_encs[0] = ONIG_ENCODING_ASCII;
   onig_initialize(use_encs, sizeof(use_encs) / sizeof(use_encs[0]));
+
   tx_global_repository();
+  tx_global_packages();
 }
 
 void tx_shutdown() {
@@ -379,10 +336,6 @@ void tx_shutdown() {
   if (global_packages) {
     txn_free(global_packages);
     global_packages = NULL;
-  }
-  if (global_syntax_registry) {
-    tx_free(global_syntax_registry);
-    global_syntax_registry = NULL;
   }
 }
 
@@ -401,6 +354,7 @@ TxNode *tx_global_packages() {
 }
 
 void tx_stats() {
-  printf("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated, _nodes_freed);
+  printf("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated,
+         _nodes_freed);
   printf("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
 }

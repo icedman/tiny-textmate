@@ -24,8 +24,6 @@ int test_single_package(int argc, char **argv) {
   dump(root, 0);
 
   txn_free(root);
-  tx_stats();
-
   return 0;
 }
 

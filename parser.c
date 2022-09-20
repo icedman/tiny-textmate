@@ -100,10 +100,8 @@ static TxState match_patterns(char_u *buffer_start, char_u *buffer_end,
   if (earliest_match.count) {
     TxNode *name = txn_get(earliest_match.syntax->self, "name");
     if (name) {
-      printf("<%ld-%ld> [%s]\n",
-          earliest_match.matches[0].start, 
-          earliest_match.matches[0].end,
-          name ? name->string_value : "");
+      printf("<%ld-%ld> [%s]\n", earliest_match.matches[0].start,
+             earliest_match.matches[0].end, name ? name->string_value : "");
     }
   }
 
@@ -112,7 +110,8 @@ static TxState match_patterns(char_u *buffer_start, char_u *buffer_end,
 }
 
 static void match_captures(char_u *buffer_start, char_u *buffer_end,
-                           TxState *state, TxSyntaxNode *captures, TxCaptureList capture_list) {
+                           TxState *state, TxSyntaxNode *captures,
+                           TxCaptureList capture_list) {
 
   if (!captures) {
     return;
@@ -154,8 +153,8 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
         matched = find_match(start, start + len, syntax->rx_match, NULL);
       }
       if (matched) {
-        capture->scope = name->string_value;
-        strcpy(capture->expanded, name->string_value);
+        capture->scope = name->self.string_value;
+        strcpy(capture->expanded, name->self.string_value);
       }
     }
   }
@@ -170,35 +169,40 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
     }
 
     char_u trailer[TS_MAX_SCOPE_LENGTH];
-    char_u* trailer_advanced = NULL;
-    char_u* placeholder = NULL;
-    while(placeholder = strchr(capture->expanded, '$')) {
+    char_u *trailer_advanced = NULL;
+    char_u *placeholder = NULL;
+    while (placeholder = strchr(capture->expanded, '$')) {
       strcpy(trailer, placeholder);
       trailer_advanced = strchr(trailer, '.');
       if (!trailer_advanced) {
         trailer_advanced = trailer;
       }
-      int capture_idx = atoi(placeholder+1)-1;
+      int capture_idx = atoi(placeholder + 1) - 1;
 
       char_u replace[TS_MAX_SCOPE_LENGTH] = "???";
       int len = capture_list[capture_idx].end - capture_list[capture_idx].start;
       if (len != 0) {
         memcpy(replace,
-          capture_list[capture_idx].buffer + capture_list[capture_idx].start,
-          len * sizeof(char_u));
+               capture_list[capture_idx].buffer +
+                   capture_list[capture_idx].start,
+               len * sizeof(char_u));
       }
 
-      sprintf(capture->expanded + (placeholder-capture->expanded), "%s%s", replace, trailer_advanced);
+      sprintf(capture->expanded + (placeholder - capture->expanded), "%s%s",
+              replace, trailer_advanced);
     }
 
-    // printf("(%ld-%ld) [%s]\n", capture->start, capture->end, capture->expanded);
-    // memcpy(&result[capture_idx], capture, sizeof(TxCapture));
+    // printf("(%ld-%ld) [%s]\n", capture->start, capture->end,
+    // capture->expanded); memcpy(&result[capture_idx], capture,
+    // sizeof(TxCapture));
   }
 
-  for (int i = 0; ; i++) {
+  for (int i = 0;; i++) {
     TxCapture *capture = &capture_list[i];
-    if (!capture->buffer) break;
-    if (!capture->scope) continue;
+    if (!capture->buffer)
+      break;
+    if (!capture->scope)
+      continue;
     printf("(%ld-%ld) [%s]\n", capture->start, capture->end, capture->expanded);
   }
 }

@@ -2,8 +2,8 @@
 #define TEXTMATE_H
 
 #include "onigmognu.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifndef char_u
 typedef uint8_t char_u;
@@ -12,12 +12,8 @@ typedef uint8_t char_u;
 extern void *(*tx_malloc)(size_t);
 extern void (*tx_free)(void *);
 
-void tx_set_allocator(void *(*custom_malloc)(size_t), void (*custom_free)(void *));
-
-#define TX_TYPE_NODE    0
-#define TX_TYPE_SYNTAX  1
-
-// #define TX_ENABLE_SERIALIZATION
+void tx_set_allocator(void *(*custom_malloc)(size_t),
+                      void (*custom_free)(void *));
 
 typedef enum {
   TxTypeNull,
@@ -29,6 +25,7 @@ typedef enum {
 } TxValueType;
 
 typedef enum {
+  TxObjectNull,
   TxObjectPackage,
   TxObjectTheme,
   TxObjectSyntax,
@@ -52,18 +49,14 @@ typedef struct _TxNode {
   void (*destroy)(struct _TxNode *);
 } TxNode;
 
-typedef TxNode TxSyntaxNode;
-
 typedef struct _TxSyntax {
-  TxSyntaxNode *self;
-  uint32_t registry_id;
+  struct TxNode *self;
+  struct TxSyntaxNode *repository;
 
-  TxSyntaxNode *repository;
-
-  TxSyntaxNode *patterns;
-  TxSyntaxNode *include;
-  TxSyntaxNode *captures;
-  TxSyntaxNode *end_captures;
+  struct TxSyntaxNode *patterns;
+  struct TxSyntaxNode *include;
+  struct TxSyntaxNode *captures;
+  struct TxSyntaxNode *end_captures;
 
   char *name;
   char *content_name;
@@ -83,12 +76,24 @@ typedef struct _TxSyntax {
 } TxSyntax;
 
 typedef struct {
-  TxNode* grammars;
-  TxNode* languages;
-  TxNode* themes;
+  TxNode self;
+  TxSyntax syntax;
+} TxSyntaxNode;
+
+typedef struct {
+  struct TxNode *self;
+  TxNode *grammars;
+  TxNode *languages;
+  TxNode *themes;
 } TxPackage;
 
 typedef struct {
+  TxNode self;
+  TxPackage package;
+} TxPackageNode;
+
+typedef struct {
+  struct TxNode *self;
   int32_t id;
 } TxTheme;
 
@@ -96,11 +101,6 @@ typedef struct {
   TxNode self;
   TxTheme theme;
 } TxThemeNode;
-
-typedef struct {
-  TxNode self;
-  TxPackage package;
-} TxPackageNode;
 
 #define TS_MAX_MATCHES 32
 #define TS_MAX_STACK_DEPTH 16
@@ -113,10 +113,10 @@ typedef struct {
 } TxMatchRange;
 
 typedef struct {
-  char_u* buffer;
+  char_u *buffer;
   size_t start;
   size_t end;
-  char_u* scope;
+  char_u *scope;
   char_u expanded[TS_MAX_SCOPE_LENGTH];
 } TxCapture;
 
@@ -148,7 +148,7 @@ char_u *txn_string_value(TxNode *node);
 TxNode *txn_object_value(TxNode *node);
 TxNode *txn_array_value(TxNode *node);
 void *txn_value(TxNode *node);
-void txn_set_string_value(TxNode* node, char_u* string);
+void txn_set_string_value(TxNode *node, char_u *string);
 
 TxNode *txn_push(TxNode *node, TxNode *child);
 TxNode *txn_pop(TxNode *node);
@@ -157,41 +157,42 @@ TxNode *txn_get(TxNode *node, char_u *key);
 TxNode *txn_child_at(TxNode *node, size_t idx);
 TxNode *txn_root(TxNode *node);
 
-TxSyntaxNode* txn_new_syntax();
-TxSyntaxNode* txn_load_syntax(char_u* path);
-TxSyntax* txn_syntax_value(TxSyntaxNode* syn);
+TxSyntaxNode *txn_new_syntax();
+TxSyntaxNode *txn_load_syntax(char_u *path);
+TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
 
-uint32_t txsr_register(TxSyntax* syntax);
-void txsr_unregister(TxSyntax* syntax);
-TxSyntax* txsr_syntax(uint32_t id);
+uint32_t txsr_register(TxSyntax *syntax);
+void txsr_unregister(TxSyntax *syntax);
+TxSyntax *txsr_syntax(uint32_t id);
 
-TxPackageNode* txn_new_package();
-TxPackageNode* txn_load_package(char_u* path);
-TxPackage* txn_package_value(TxPackageNode* pkn);
+TxPackageNode *txn_new_package();
+TxPackageNode *txn_load_package(char_u *path);
+TxPackage *txn_package_value(TxPackageNode *pkn);
 
-TxThemeNode* txn_new_theme();
-TxThemeNode* txn_load_theme(char_u* path);
-TxTheme* txn_theme_value(TxThemeNode* pkn);
+TxThemeNode *txn_new_theme();
+TxThemeNode *txn_load_theme(char_u *path);
+TxTheme *txn_theme_value(TxThemeNode *pkn);
 
-void tx_parse_line(char_u *buffer_start, char_u *buffer_end, TxStateStack *stack);
+void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
+                   TxStateStack *stack);
 
 void txs_init_stack(TxStateStack *stack);
 void txs_init_state(TxState *state);
 void txs_push(TxStateStack *stack, TxState *state);
 void txs_pop(TxStateStack *stack);
-TxState* txs_top(TxStateStack *stack);
+TxState *txs_top(TxStateStack *stack);
 
 void tx_initialize();
 void tx_shutdown();
 
-TxSyntaxNode* tx_global_repository();
-TxNode* tx_global_packages();
+TxSyntaxNode *tx_global_repository();
+TxNode *tx_global_packages();
 void tx_read_package_dir(char *path);
 
 TxSyntaxNode *tx_syntax_from_path(char_u *path);
 TxSyntaxNode *tx_syntax_from_scope(char_u *scope);
 
-regex_t* tx_compile_pattern(char_u *pattern);
+regex_t *tx_compile_pattern(char_u *pattern);
 
 #define TX_TIMER_BEGIN                                                         \
   clock_t _start, _end;                                                        \

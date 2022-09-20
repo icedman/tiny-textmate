@@ -36,19 +36,19 @@ static void post_process_syntax(TxSyntaxNode *n) {
     }
   }
 
-  TxSyntaxNode *c = n->first_child;
+  TxSyntaxNode *c = n->self.first_child;
   while (c) {
     post_process_syntax(c);
-    c = c->next_sibling;
+    c = c->self.next_sibling;
   }
 }
 
 /*
-* parsed syntax must:
-* 1. resolve local includes
-* 2. pre-compile regex
-* 3. set pointers to nodes in TxSyntax
-*/
+ * parsed syntax must:
+ * 1. resolve local includes
+ * 2. pre-compile regex
+ * 3. set pointers to nodes in TxSyntax
+ */
 static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   TxSyntax *syntax = txn_syntax_value(node);
 
@@ -138,7 +138,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           cJSON *capture_item = cJSON_GetObjectItem(item, capture_key);
           if (capture_item) {
             TxSyntaxNode *capture_node = txn_new_syntax();
-            capture_node->number_value = i;
+            capture_node->self.number_value = i;
             txn_set(captures, capture_key, capture_node);
             parse_syntax(capture_item, root, capture_node);
           }
@@ -192,10 +192,10 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 }
 
 /*
-* parsed package must:
-* 1. set pointers to nodes in TxPackage (grammars, languages, themes)
-* 2. languages must resolve scope_name
-*/
+ * parsed package must:
+ * 1. set pointers to nodes in TxPackage (grammars, languages, themes)
+ * 2. languages must resolve scope_name
+ */
 static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
   char_u *base_path = path;
   TxPackage *package = txn_package_value(node);
@@ -303,11 +303,12 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
 
             // resolve grammar scope_name
             TxNode *grammar_child = grammars_node->first_child;
-            while(grammar_child) {
+            while (grammar_child) {
               TxNode *id = txn_get(grammar_child, "language");
               TxNode *scope = txn_get(grammar_child, "scopeName");
               if (scope && id && strcmp(id->string_value, language_id) == 0) {
-                txn_set(language_node, "scopeName", txn_new_string(scope->string_value));
+                txn_set(language_node, "scopeName",
+                        txn_new_string(scope->string_value));
                 break;
               }
               grammar_child = grammar_child->next_sibling;
@@ -384,9 +385,7 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   return root;
 }
 
-TxThemeNode* txn_load_theme(char_u* path) {
-  return NULL;
-}
+TxThemeNode *txn_load_theme(char_u *path) { return NULL; }
 
 TxPackageNode *txn_load_package(char_u *path) {
   FILE *fp = fopen(path, "r");

@@ -5,6 +5,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// #define TX_SYNTAX_VERBOSE_REGEX
+
+#define TS_MAX_STACK_DEPTH 16
+#define TS_MAX_MATCHES 9
+#define TS_MAX_CAPTURES TS_MAX_MATCHES
+#define TS_CAPTURE_NAME_LENGTH 16
+#define TS_SCOPE_NAME_LENGTH 64
+
 #ifndef char_u
 typedef uint8_t char_u;
 #endif
@@ -35,17 +43,22 @@ typedef struct _TxNode {
   TxValueType type;
   int32_t object_type;
   int32_t index;
-  char *name;
-  int32_t number_value;
-  double double_value;
-  char *string_value;
-  void *data;
+
+  // tree
   struct _TxNode *parent;
   struct _TxNode *prev_sibling;
   struct _TxNode *next_sibling;
   struct _TxNode *first_child;
   struct _TxNode *last_child;
   size_t size;
+
+  // data
+  char_u *name;
+  int32_t number_value;
+  double double_value;
+  char_u *string_value;
+  void *data;
+
   void (*destroy)(struct _TxNode *);
 } TxNode;
 
@@ -58,9 +71,9 @@ typedef struct _TxSyntax {
   struct TxSyntaxNode *captures;
   struct TxSyntaxNode *end_captures;
 
-  char *name;
-  char *content_name;
-  char *scope_name;
+  char_u *name;
+  char_u *content_name;
+  char_u *scope_name;
 
   bool include_external;
 
@@ -71,8 +84,9 @@ typedef struct _TxSyntax {
   regex_t *rx_begin;
   regex_t *rx_end;
 
-  // config
-  bool verbose;
+  bool dynamic_end;
+  char_u *end_pattern;
+
 } TxSyntax;
 
 typedef struct {
@@ -102,11 +116,6 @@ typedef struct {
   TxTheme theme;
 } TxThemeNode;
 
-#define TS_MAX_MATCHES 32
-#define TS_MAX_STACK_DEPTH 16
-#define TS_MAX_CAPTURES 16
-#define TS_MAX_SCOPE_LENGTH 128
-
 typedef struct {
   size_t start;
   size_t end;
@@ -117,7 +126,8 @@ typedef struct {
   size_t start;
   size_t end;
   char_u *scope;
-  char_u expanded[TS_MAX_SCOPE_LENGTH];
+  char_u expanded[TS_SCOPE_NAME_LENGTH];
+  char_u name[TS_CAPTURE_NAME_LENGTH];
 } TxCapture;
 
 typedef TxCapture TxCaptureList[TS_MAX_CAPTURES];
@@ -127,8 +137,11 @@ typedef struct {
   uint8_t count;
   size_t offset;
   TxMatchRange matches[TS_MAX_MATCHES];
+  TxCaptureList capture_list;
+  TxCaptureList end_capture_list;
 } TxState;
 
+// 34952 bytes ... too big
 typedef struct {
   uint8_t size;
   TxState states[TS_MAX_STACK_DEPTH];

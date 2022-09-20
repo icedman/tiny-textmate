@@ -53,8 +53,8 @@ int test_packages(int argc, char **argv) {
 int main(int argc, char **argv) {
   tx_initialize();
 
-  // test_single_package(argc, argv);
-  test_packages(argc, argv);
+  test_single_package(argc, argv);
+  // test_packages(argc, argv);
 
   tx_shutdown();
   tx_stats();

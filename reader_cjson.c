@@ -46,7 +46,7 @@ static void post_process_syntax(TxSyntaxNode *n) {
 /*
  * parsed syntax must:
  * 1. resolve local includes
- * 2. pre-compile regex
+ * 2. pre-compile regex, and pre-determine for dynamic end matches
  * 3. set pointers to nodes in TxSyntax
  */
 static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
@@ -74,9 +74,29 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       if (item && item->valuestring) {
         TxSyntaxNode *regex_node = txn_new_syntax();
         if (item->valuestring) {
-          if (txn_syntax_value(root)->verbose) {
-            txn_set_string_value(regex_node, item->valuestring);
+
+#ifdef TX_SYNTAX_VERBOSE_REGEX
+          txn_set_string_value(regex_node, item->valuestring);
+#endif
+
+#if 0
+          // syntax->dynamic_end??
+          if (strcmp(key, "end") == 0) {
+            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3",  "\\4",  "\\5",
+                          "\\6",  "\\7",  "\\8",  "\\9",  "\\10", "\\11",
+                          "\\12", "\13", "\\14", "\\15", "\\16", 0};
+            for(int j=0; j<TS_MAX_CAPTURES; j++) {
+              if (strstr(item->valuestring, capture_keys[j])) {
+                syntax->dynamic_end = true;
+
+                txn_set_string_value(regex_node, item->valuestring);
+                syntax->end_pattern = regex_node->self.string_value;
+                break;
+              }
+            }
           }
+#endif
+
           *regexes[i] = tx_compile_pattern(item->valuestring);
         }
         txn_set(node, key, regex_node);
@@ -97,13 +117,13 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       cJSON *item = cJSON_GetObjectItem(obj, key);
       if (item && item->valuestring) {
         TxNode *value = txn_set(node, key, txn_new_string(item->valuestring));
-        if (i == 2) {
+        if (strcmp(key, "name") == 0) {
           syntax->name = value->string_value;
         }
-        if (i == 3) {
+        if (strcmp(key, "contentName") == 0) {
           syntax->content_name = value->string_value;
         }
-        if (i == 4) {
+        if (strcmp(key, "scopeName") == 0) {
           syntax->scope_name = value->string_value;
         }
       }
@@ -128,10 +148,10 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         } else {
           syntax->captures = captures;
         }
-        char_u *capture_keys[] = {"0",  "1",  "2",  "3",  "4",  "5",
-                                  "6",  "7",  "8",  "9",  "10", "11",
-                                  "12", "13", "14", "15", 0};
-        for (int j = 0;; j++) {
+        char_u *capture_keys[] = {"1",  "2",  "3",  "4",  "5",  "6",
+                                  "7",  "8",  "9",  "10", "11", "12",
+                                  "13", "14", "15", "16", 0};
+        for (int j = 0; j < TS_MAX_CAPTURES; j++) {
           char_u *capture_key = capture_keys[j];
           if (!capture_key)
             break;
@@ -373,13 +393,13 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   TxSyntaxNode *root = txn_new_syntax();
   TxSyntax *syntax = txn_syntax_value(root);
   txn_set_name(root, "root");
-  syntax->verbose = true;
   syntax->repository = txn_new_object();
 
   txn_set(root, "repository", syntax->repository);
   parse_syntax(json, root, root);
 
-  cJSON_free(content);
+  cJSON_free(json);
+  tx_free(content);
 
   post_process_syntax(root);
   return root;
@@ -406,7 +426,8 @@ TxPackageNode *txn_load_package(char_u *path) {
   TxPackageNode *pkn = txn_new_package();
   parse_package(json, pkn, path);
 
-  cJSON_free(content);
+  cJSON_free(json);
+  tx_free(content);
   return pkn;
 }
 

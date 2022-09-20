@@ -32,9 +32,12 @@ int main(int argc, char **argv) {
   state.syntax = txn_syntax_value(root);
   txs_push(&stack, &state);
 
-  dump(root, 0);
+  // dump(root, 0);
 
   tx_shutdown();
   tx_stats();
+
+  printf("sizeof TxStateStack %ld\n", sizeof(TxStateStack));
+
   return 0;
 }

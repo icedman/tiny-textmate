@@ -7,13 +7,20 @@ static TxSyntaxNode *global_repository = NULL;
 static TxNode *global_packages = NULL;
 
 regex_t *tx_compile_pattern(char_u *pattern) {
+  int len = strlen(pattern);
   regex_t *regex;
   OnigErrorInfo einfo;
-  int result = onig_new(&regex, pattern, pattern + strlen((char *)pattern),
-                        ONIG_OPTION_DEFAULT, ONIG_ENCODING_ASCII,
-                        ONIG_SYNTAX_DEFAULT, &einfo);
+  int result = onig_new(&regex, pattern, pattern + len, ONIG_OPTION_DEFAULT,
+                        ONIG_ENCODING_UTF8, ONIG_SYNTAX_DEFAULT, &einfo);
   if (result != ONIG_NORMAL) {
-    printf("pattern not compiled %s\n", pattern);
+    OnigUChar s[ONIG_MAX_ERROR_MESSAGE_LEN];
+    onig_error_code_to_str(s, result, &einfo);
+    printf("onig error: %s %s\n", s, pattern);
+    if (regex) {
+      onig_free(regex);
+      regex = NULL;
+    }
+    // printf("pattern not compiled: %s\n", pattern);
   }
   return regex;
 }

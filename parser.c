@@ -118,19 +118,18 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
   }
 
   TxMatchRange *matches = state->matches;
-  // TxCaptureList capture_list;
-  // memset(result, 0, sizeof(TxCaptureList));
   memset(capture_list, 0, sizeof(TxCaptureList));
 
   char key[64];
   for (int j = 1; j < state->count; j++) {
-    int capture_idx = (j - 1);
+    int capture_idx = j;
     TxCapture *capture = &capture_list[capture_idx];
 
     capture->buffer = buffer_start;
     capture->start = matches[j].start;
     capture->end = matches[j].end;
     capture->scope = NULL;
+    capture->name[0] = NULL;
     capture->expanded[0] = NULL;
 
     sprintf(key, "%d", capture_idx);
@@ -161,14 +160,16 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
 
   // expand scopes
   for (int j = 1; j < state->count; j++) {
-    int capture_idx = (j - 1);
+    int capture_idx = j;
+    if (capture_idx >= TS_MAX_CAPTURES)
+      break;
     TxCapture *capture = &capture_list[capture_idx];
 
     if (!capture->scope) {
       continue;
     }
 
-    char_u trailer[TS_MAX_SCOPE_LENGTH];
+    char_u trailer[TS_SCOPE_NAME_LENGTH];
     char_u *trailer_advanced = NULL;
     char_u *placeholder = NULL;
     while (placeholder = strchr(capture->expanded, '$')) {
@@ -177,15 +178,19 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
       if (!trailer_advanced) {
         trailer_advanced = trailer;
       }
-      int capture_idx = atoi(placeholder + 1) - 1;
+      int capture_idx = atoi(placeholder + 1);
 
-      char_u replace[TS_MAX_SCOPE_LENGTH] = "???";
+      char_u replace[TS_CAPTURE_NAME_LENGTH] = "???";
       int len = capture_list[capture_idx].end - capture_list[capture_idx].start;
+      if (len >= TS_CAPTURE_NAME_LENGTH) {
+        len = TS_CAPTURE_NAME_LENGTH;
+      }
       if (len != 0) {
         memcpy(replace,
                capture_list[capture_idx].buffer +
                    capture_list[capture_idx].start,
                len * sizeof(char_u));
+        strncpy(capture->name, replace, TS_CAPTURE_NAME_LENGTH);
       }
 
       sprintf(capture->expanded + (placeholder - capture->expanded), "%s%s",
@@ -193,17 +198,17 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
     }
 
     // printf("(%ld-%ld) [%s]\n", capture->start, capture->end,
-    // capture->expanded); memcpy(&result[capture_idx], capture,
-    // sizeof(TxCapture));
+    //   capture->expanded);
   }
 
-  for (int i = 0;; i++) {
+  for (int i = 1;; i++) {
     TxCapture *capture = &capture_list[i];
     if (!capture->buffer)
       break;
     if (!capture->scope)
       continue;
-    printf("(%ld-%ld) [%s]\n", capture->start, capture->end, capture->expanded);
+    printf("%d (%ld-%ld) [%s]\n", i, capture->start, capture->end,
+           capture->expanded);
   }
 }
 
@@ -216,9 +221,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     TxState *top = txs_top(stack);
     TxSyntax *syntax = top->syntax;
 
-    TxCaptureList capture_list;
-
-    // todo
+    // todo .. current sytnax dictates region to scan (not the entire line)
     end = buffer_end;
 
     TxState pattern_match;
@@ -231,6 +234,37 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       // printf("process patterns %d %d\n", syntax->patterns->size,
       // pattern_match.count);
     }
+
+#if 0
+    if (syntax->dynamic_end) {
+      if (syntax->rx_end) {
+        onig_free(syntax->rx_end);
+        syntax->rx_end = NULL;
+      }
+
+      // todo handle "(?i)(</)(\\2)\\s*(>)"
+      char_u *capture_keys[] = {"\\1",  "\\2",  "\\3",  "\\4",  "\\5",
+                    "\\6",  "\\7",  "\\8",  "\\9",  "\\10", "\\11",
+                    "\\12", "\13", "\\14", "\\15", "\\16", 0};
+
+      int len = strlen(syntax->end_pattern) + 128;
+      char_u *new_pattern = tx_malloc(len);
+      char_u *trailer = tx_malloc(len);
+      strcpy(new_pattern, syntax->end_pattern);
+      for(int j=0; j<TS_MAX_CAPTURES; j++) {
+        char_u *pos;
+        if (pos = strstr(new_pattern, capture_keys[j])) {
+          strcpy(trailer, pos);
+          sprintf(pos, "??%s", trailer);
+        }
+      }
+
+      printf(">>>%s\n", new_pattern);
+
+      tx_free(new_pattern);
+      tx_free(trailer);
+    }
+#endif
 
     if (syntax->rx_end) {
       if (find_match(start, end, syntax->rx_end, &end_match)) {
@@ -248,13 +282,15 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
         // printf("captures! %ld %d\n", pattern_match.syntax->captures->size,
         // pattern_match.count);
         match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->captures, capture_list);
+                       pattern_match.syntax->captures,
+                       pattern_match.capture_list);
       }
       if (pattern_match.syntax->end_captures) {
         // printf("end captures! %ld %d\n",
         // pattern_match.syntax->captures->size, pattern_match.count);
         match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->end_captures, capture_list);
+                       pattern_match.syntax->end_captures,
+                       pattern_match.end_capture_list);
       }
 
       end = start + pattern_match.matches[0].end;
@@ -275,7 +311,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
           // printf("begin captures! %ld %d\n",
           // pattern_match.syntax->captures->size, pattern_match.count);
           match_captures(start, end, &pattern_match,
-                         pattern_match.syntax->captures, capture_list);
+                         pattern_match.syntax->captures,
+                         pattern_match.capture_list);
         }
 
         end = start + pattern_match.matches[0].end;
@@ -285,7 +322,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
         // printf("match captures! %ld %d\n",
         // pattern_match.syntax->captures->size, pattern_match.count);
         match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->captures, capture_list);
+                       pattern_match.syntax->captures,
+                       pattern_match.capture_list);
       }
     }
 

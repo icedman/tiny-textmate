@@ -7,7 +7,7 @@
 
 // #define TX_SYNTAX_VERBOSE_REGEX
 
-#define TS_MAX_STACK_DEPTH 16
+#define TS_MAX_STACK_DEPTH 32
 #define TS_MAX_MATCHES 9
 #define TS_MAX_CAPTURES TS_MAX_MATCHES
 #define TS_CAPTURE_NAME_LENGTH 16
@@ -119,24 +119,19 @@ typedef struct {
 typedef struct {
   size_t start;
   size_t end;
-} TxMatchRange;
-
-typedef struct {
   char_u *buffer;
-  size_t start;
-  size_t end;
   char_u *scope;
   char_u expanded[TS_SCOPE_NAME_LENGTH];
   char_u name[TS_CAPTURE_NAME_LENGTH];
 } TxCapture;
 
+typedef TxCapture TxMatchRange;
 typedef TxCapture TxCaptureList[TS_MAX_CAPTURES];
 
 typedef struct {
   TxSyntax *syntax;
   uint8_t count;
-  size_t offset;
-  TxMatchRange matches[TS_MAX_MATCHES];
+  TxCaptureList matches;  // todo .. matches .. redundant with capture_list
   TxCaptureList capture_list;
   TxCaptureList end_capture_list;
 } TxState;
@@ -146,6 +141,12 @@ typedef struct {
   uint8_t size;
   TxState states[TS_MAX_STACK_DEPTH];
 } TxStateStack;
+
+typedef struct _TxProcessor {
+  void (*line_begin)(struct TxProcessor *, TxStateStack *);
+  void (*open_tag)(struct TxProcessor *, TxStateStack *);
+  void (*end_tag)(struct TxProcessor *, TxStateStack *);
+} TxProcessor;
 
 TxNode *txn_new(char_u *name, TxValueType type);
 TxNode *txn_new_number(int32_t number);
@@ -187,13 +188,15 @@ TxThemeNode *txn_load_theme(char_u *path);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
 
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
-                   TxStateStack *stack);
+                   TxStateStack *stack, TxProcessor *processor);
 
 void txs_init_stack(TxStateStack *stack);
 void txs_init_state(TxState *state);
 void txs_push(TxStateStack *stack, TxState *state);
 void txs_pop(TxStateStack *stack);
 TxState *txs_top(TxStateStack *stack);
+
+void txp_init_processor(TxProcessor *processor);
 
 void tx_initialize();
 void tx_shutdown();

@@ -6,8 +6,25 @@
 
 void dump(TxNode *n, int level);
 
+void line_begin(struct TxProcessor *self, TxStateStack *stack)
+{
+  printf("--------------------------------------------\n");
+}
+
+void open_tag(struct TxProcessor *self, TxStateStack *stack)
+{}
+
+void end_tag(struct TxProcessor *self, TxStateStack *stack)
+{}
+
 int main(int argc, char **argv) {
   TX_TIMER_BEGIN
+
+  TxProcessor processor;
+  txp_init_processor(&processor);
+  processor.line_begin = line_begin;
+  processor.open_tag = open_tag;
+  processor.end_tag = end_tag;
 
   tx_initialize();
 
@@ -48,11 +65,11 @@ int main(int argc, char **argv) {
     fgets(temp, 1024, fp);
 
     int len = strlen(temp);
-    printf("%s\n", temp);
-    tx_parse_line(temp, temp + len, &stack);
+    printf("%s", temp);
+    tx_parse_line(temp, temp + len, &stack, &processor);
 
     // temp[0] = "\n";
-    // tx_parse_line(temp, temp + 1, &stack);
+    // tx_parse_line(temp, temp + 1, &stack, NULL);
   }
   fclose(fp);
 

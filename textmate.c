@@ -302,6 +302,10 @@ void txs_init_stack(TxStateStack *stack) {
 
 void txs_init_state(TxState *state) { memset(state, 0, sizeof(TxState)); }
 
+void txp_init_processor(TxProcessor *processor) {
+  memset(processor, 0, sizeof(TxProcessor));
+}
+
 void txs_push(TxStateStack *stack, TxState *state) {
   // replace last on the stack
   if (stack->size >= TS_MAX_STACK_DEPTH - 1) {

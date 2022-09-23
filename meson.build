@@ -53,6 +53,15 @@ executable('test_package',
   dependencies: [ onigmo_dep ]
 )
 
+executable('test_theme',
+  'tests/theme.c',
+  'tests/dump.c',
+  cjson_files,
+  textmate_files,
+  include_directories: [ cjson_inc, textmate_inc ],
+  dependencies: [ onigmo_dep ]
+)
+
 executable('test_list',
   'tests/dump.c',
   'tests/list.c',

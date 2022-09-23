@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
   tx_shutdown();
   tx_stats();
 
+  printf("sizeof TxState %ld\n", sizeof(TxState));
   printf("sizeof TxStateStack %ld\n", sizeof(TxStateStack));
 
   return 0;

@@ -19,7 +19,12 @@ static void post_process_syntax(TxSyntaxNode *n) {
       if (path[0] == '#') {
         path++;
       } else if (path[0] == '$') {
-        // self or base
+        if (strcmp(path, "$self") == 0) {
+          syntax->include = root;
+        } else if (strcmp(path, "$base") == 0) {
+          // todo ... for embed grammars
+          syntax->include = root;
+        }
       } else {
         // external?
         syntax->include_external = true;
@@ -79,18 +84,17 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           txn_set_string_value(regex_node, item->valuestring);
 #endif
 
-#if 0
-          // syntax->dynamic_end??
+#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
           if (strcmp(key, "end") == 0) {
-            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3",  "\\4",  "\\5",
-                          "\\6",  "\\7",  "\\8",  "\\9",  "\\10", "\\11",
-                          "\\12", "\13", "\\14", "\\15", "\\16", 0};
-            for(int j=0; j<TS_MAX_CAPTURES; j++) {
+            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3", "\\4",  "\\5",
+                                      "\\6",  "\\7",  "\\8", "\\9",  "\\10",
+                                      "\\11", "\\12", "\13", "\\14", "\\15",
+                                      "\\16", 0};
+            for (int j = 0; j < TS_MAX_CAPTURES; j++) {
               if (strstr(item->valuestring, capture_keys[j])) {
-                syntax->dynamic_end = true;
-
-                txn_set_string_value(regex_node, item->valuestring);
-                syntax->end_pattern = regex_node->self.string_value;
+                TxNode *ns = txn_new_string(item->valuestring);
+                txn_set(node, "end_pattern", ns);
+                txn_syntax_value(node)->end_pattern = ns->string_value;
                 break;
               }
             }
@@ -143,14 +147,13 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       if (item) {
         TxSyntaxNode *captures = txn_new_syntax();
         txn_set(node, key, captures);
-        if (i == 2) {
+        if (strcmp(key, "endCaptures") == 0) {
           syntax->end_captures = captures;
         } else {
           syntax->captures = captures;
         }
-        char_u *capture_keys[] = {"1",  "2",  "3",  "4",  "5",  "6",
-                                  "7",  "8",  "9",  "10", "11", "12",
-                                  "13", "14", "15", "16", 0};
+        char_u *capture_keys[] = {"1", "2", "3", "4", "5",
+                                  "6", "7", "8", "9", 0};
         for (int j = 0; j < TS_MAX_CAPTURES; j++) {
           char_u *capture_key = capture_keys[j];
           if (!capture_key)
@@ -158,13 +161,17 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           cJSON *capture_item = cJSON_GetObjectItem(item, capture_key);
           if (capture_item) {
             TxSyntaxNode *capture_node = txn_new_syntax();
-            capture_node->self.number_value = i;
             txn_set(captures, capture_key, capture_node);
+            txn_syntax_value(captures)->capture_refs[j+1] = capture_node;
             parse_syntax(capture_item, root, capture_node);
           }
         }
       }
     }
+
+    // if (!syntax->end_captures) {
+    //   syntax->end_captures = syntax->captures;
+    // }
   }
 
   // patterns
@@ -372,8 +379,52 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
   }
 }
 
-// re-implement these next functions if you want to ditch cjson
+static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
+  char_u *base_path = path;
+  TxTheme *theme = txn_theme_value(node);
+  TxNode *token_colors = txn_get(node, "tokenColors");
+  if (!token_colors) {
+    token_colors = txn_set(node, "tokenColors", txn_new_object());
+    theme->token_colors = token_colors;
+  }
 
+  {
+    cJSON *tokenColors = cJSON_GetObjectItem(obj, "tokenColors");
+    if (tokenColors) {
+      size_t sz = cJSON_GetArraySize(tokenColors);
+      for (int i = 0; i < sz; i++) {
+        cJSON *token_item = cJSON_GetArrayItem(tokenColors, i);
+        cJSON *scope = cJSON_GetObjectItem(token_item, "scope");
+        cJSON *settings = cJSON_GetObjectItem(token_item, "settings");
+        cJSON *fg = NULL;
+
+        if (!settings)
+          continue;
+        fg = cJSON_GetObjectItem(settings, "foreground");
+        if (!fg)
+          continue;
+
+        if (scope && scope->valuestring) {
+          txn_set(token_colors, scope->valuestring,
+                  txn_new_string(fg->valuestring));
+        } else if (scope) {
+          size_t scopes = cJSON_GetArraySize(scope);
+          for (int j = 0; j < scopes; j++) {
+            cJSON *scope_item = cJSON_GetArrayItem(scope, j);
+            if (scope_item && scope_item->valuestring) {
+              txn_set(token_colors, scope_item->valuestring,
+                      txn_new_string(fg->valuestring));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// --------------------
+// re-implement these next functions if you want to ditch cjson
+// --------------------
 TxSyntaxNode *txn_load_syntax(char_u *path) {
   FILE *fp = fopen(path, "r");
 
@@ -405,7 +456,29 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   return root;
 }
 
-TxThemeNode *txn_load_theme(char_u *path) { return NULL; }
+TxThemeNode *txn_load_theme(char_u *path) {
+  FILE *fp = fopen(path, "r");
+
+  if (!fp) {
+    return NULL;
+  }
+
+  fseek(fp, 0, SEEK_END);
+  size_t sz = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  char_u *content = tx_malloc(sz);
+  fread(content, sz, 1, fp);
+  fclose(fp);
+
+  cJSON *json = cJSON_Parse(content);
+
+  TxThemeNode *thm = txn_new_theme();
+  parse_theme(json, thm, path);
+
+  cJSON_free(json);
+  tx_free(content);
+  return thm;
+}
 
 TxPackageNode *txn_load_package(char_u *path) {
   FILE *fp = fopen(path, "r");

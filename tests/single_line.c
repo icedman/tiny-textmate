@@ -1,1 +1,2 @@
-int x = 0;
+int x = 123; // single line
+char z[123] = "hello";

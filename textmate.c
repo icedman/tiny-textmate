@@ -98,11 +98,15 @@ TxNode *txn_new_value(void *data) {
   return n;
 }
 
-int32_t txn_number_value(TxNode *node) { return node->number_value; }
+int32_t txn_number_value(TxNode *node) { return node ? node->number_value : 0; }
 
-char_u *txn_string_value(TxNode *node) { return (char_u *)node->string_value; }
+char_u *txn_string_value(TxNode *node) {
+  return node ? (char_u *)node->string_value : NULL;
+}
 
 void txn_set_string_value(TxNode *node, char_u *string) {
+  if (!node)
+    return;
   if (node->string_value) {
     tx_free(node->string_value);
     node->string_value = NULL;

@@ -51,9 +51,16 @@ int main(int argc, char **argv)
   use_encs[0] = ONIG_ENCODING_ASCII;
   onig_initialize(use_encs, sizeof(use_encs) / sizeof(use_encs[0]));
 
-  char temp[] = "the lazy quick brown fox";
-  regex_t* rx = compile_pattern("(lazy)\\s(quick)");
-  find_match(temp, temp + strlen(temp), rx);
-  onig_free(rx);
+  // char temp[] = "the lazy quick brown fox";
+  // regex_t* rx = compile_pattern("(lazy)\\s(quick)");
+
+  {
+    char temp[] = "   /* Don't re-focus an already focused surface. */";
+    printf("%s\n", temp);
+    regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
+    find_match(temp, temp + strlen(temp), rx);
+    onig_free(rx);
+  }
+
   return 0;
 }

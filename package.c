@@ -1,6 +1,11 @@
 #include "textmate.h"
+
+#include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+
 
 TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   char_u file_name[MAX_PATH_LENGTH] = "";
@@ -91,11 +96,10 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
         if (path) {
           TxSyntaxNode *syntax_node = txn_load_syntax(path->string_value);
           if (syntax_node) {
-            printf("found at package!\n");
-            txn_set(tx_global_repository(), scope, syntax_node);
+            return txn_set(tx_global_repository(), scope, syntax_node);
           } else {
             // dummy syntax
-            txn_set(tx_global_repository(), scope, txn_new_syntax());
+            return txn_set(tx_global_repository(), scope, txn_new_syntax());
           }
         }
       }
@@ -103,4 +107,40 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
     child = child->next_sibling;
   }
   return NULL;
+}
+
+void tx_read_package_dir(char *path) {
+  DIR *dp;
+  struct dirent *ep;
+
+  char_u base_path[MAX_PATH_LENGTH];
+  sprintf(base_path, "%s/", path);
+  dp = opendir(base_path);
+  printf("%s\n", base_path);
+  if (dp != NULL) {
+    while ((ep = readdir(dp)) != NULL) {
+      char_u full_path[MAX_PATH_LENGTH] = "";
+      char_u package_path[MAX_PATH_LENGTH] = "";
+      char_u *last_separator = strrchr(base_path, DIR_SEPARATOR);
+      char_u *relative_path = ep->d_name;
+
+      strcpy(full_path, base_path);
+      if (!last_separator) {
+        sprintf(full_path + strlen(base_path), "%s", relative_path);
+      } else {
+        sprintf(full_path + (last_separator - base_path) + 1, "%s",
+                relative_path);
+      }
+      sprintf(package_path, "%s%cpackage.json", full_path, DIR_SEPARATOR);
+
+      // printf("%s\n", package_path);
+
+      TxPackageNode *pkn = txn_load_package(package_path);
+      if (pkn) {
+        // dump(pkn, 0);
+        txn_push(tx_global_packages(), pkn);
+      }
+    }
+    closedir(dp);
+  }
 }

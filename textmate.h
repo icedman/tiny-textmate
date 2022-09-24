@@ -78,7 +78,7 @@ typedef struct _TxSyntax {
   char_u *content_name;
   char_u *scope_name;
 
-  bool include_external;
+  char_u *include_scope;
 
   regex_t *rx_first_line_match;     // unused
   regex_t *rx_folding_start_marker; // unused
@@ -162,10 +162,9 @@ typedef struct _TxProcessor {
   void (*open_tag)(struct TxProcessor *self, TxStateStack *stack);
   void (*close_tag)(struct TxProcessor *self, TxStateStack *stack);
   void (*capture)(struct TxProcessor *self, TxState *match, TxCaptureList captures);
-  TxStateStack line_state;
+  TxStateStack state_stack;
   char_u *buffer;
   size_t length;
-  uint32_t color;
   void *data;
 } TxProcessor;
 

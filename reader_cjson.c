@@ -1,11 +1,8 @@
 #include "cJSON.h"
 #include "textmate.h"
 
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
 
 static void post_process_syntax(TxSyntaxNode *n) {
   TxSyntax *syntax = txn_syntax_value(n);
@@ -27,16 +24,12 @@ static void post_process_syntax(TxSyntaxNode *n) {
         }
       } else {
         // external?
-        syntax->include_external = true;
-        // printf("external %s\n", path);
+        syntax->include_scope = include_node->string_value;
+        printf("external %s\n", syntax->include_scope);
       }
 
       if (repo_node) {
-        TxNode *include_node = txn_get(repo_node, path);
-        if (include_node) {
-          syntax->include = include_node;
-          // printf("include! %s\n", path);
-        }
+        syntax->include = txn_get(repo_node, path);
       }
     }
   }
@@ -520,37 +513,4 @@ TxPackageNode *txn_load_package(char_u *path) {
   cJSON_free(json);
   tx_free(content);
   return pkn;
-}
-
-void tx_read_package_dir(char *path) {
-  char_u *base_path = path;
-  DIR *dp;
-  struct dirent *ep;
-  dp = opendir(path);
-  if (dp != NULL) {
-    while ((ep = readdir(dp)) != NULL) {
-      char_u full_path[MAX_PATH_LENGTH] = "";
-      char_u package_path[MAX_PATH_LENGTH] = "";
-      char_u *last_separator = strrchr(base_path, DIR_SEPARATOR);
-      char_u *relative_path = ep->d_name;
-
-      strcpy(full_path, base_path);
-      if (!last_separator) {
-        sprintf(full_path + strlen(base_path), "%s", relative_path);
-      } else {
-        sprintf(full_path + (last_separator - base_path) + 1, "%s",
-                relative_path);
-      }
-      sprintf(package_path, "%s%cpackage.json", full_path, DIR_SEPARATOR);
-
-      // printf("%s\n", package_path);
-
-      TxPackageNode *pkn = txn_load_package(package_path);
-      if (pkn) {
-        // dump(pkn, 0);
-        txn_push(tx_global_packages(), pkn);
-      }
-    }
-    closedir(dp);
-  }
 }

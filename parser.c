@@ -66,19 +66,19 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
   TxSyntax *syntax = txn_syntax_value(node);
 
   if (syntax) {
-    if (!syntax->include && syntax->include_external) {
-      TxNode *include_node = txn_get(syntax, "include");
-      if (include_node && include_node->string_value) {
-        char_u *path = include_node->string_value;
+    if (syntax->include_scope) {
+      printf("request external syntax %s\n", syntax->include_scope);
+      TxSyntaxNode* include_node = tx_syntax_from_scope(syntax->include_scope);
+      syntax->include_scope = NULL;
+      if (include_node) {
+        syntax->include = include_node;
+        syntax = txn_syntax_value_proxy(include_node);
 
         // todo request external syntax
         // resolve source scope
         // resolve #hash
         // tx_syntax_from_scope
         // resolve #hash from local repository
-
-        // printf("request external syntax\n");
-        syntax->include_external = false;
       }
     }
 
@@ -405,11 +405,11 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       pattern_match = end_match;
 
       // process captures
-      // if (pattern_match.syntax->captures) {
-      //   match_captures(start, end, &pattern_match,
-      //                  pattern_match.syntax->captures, pattern_match.matches,
-      //                  txs_top(stack)->matches, processor);
-      // }
+      if (pattern_match.syntax->captures) {
+        match_captures(start, end, &pattern_match,
+                       pattern_match.syntax->captures, pattern_match.matches,
+                       txs_top(stack)->matches, NULL);
+      }
       if (pattern_match.syntax->end_captures) {
         match_captures(start, end, &pattern_match,
                        pattern_match.syntax->end_captures,
@@ -419,14 +419,12 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       end = start + pattern_match.matches[0].end;
       start = start + pattern_match.matches[0].start;
 
-      // expand_match(&pattern_match);
-      // printf("}}}}}}}}}\n");
-
-      txs_pop(stack);
-
       if (processor && processor->close_tag) {
+        txs_top(stack)->matches[0].end = pattern_match.offset + pattern_match.matches[0].end;
         processor->close_tag(processor, stack);
       }
+
+      txs_pop(stack);
 
     } else {
 
@@ -436,12 +434,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       }
 
       if (pattern_match.syntax->rx_begin) {
-        // printf("{{{{{{{{{\n");
-
-        // dump_syntax_node(pattern_match.syntax->self);
-
-        // expand_match(&pattern_match);
-
         if (pattern_match.syntax->captures) {
           match_captures(start, end, &pattern_match,
                          pattern_match.syntax->captures, pattern_match.matches,
@@ -464,20 +456,12 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
         start = start + pattern_match.matches[0].start;
 
       } else if (pattern_match.syntax->rx_match) {
-
-        // printf("[[[[[[[[\n");
-        // expand_match(&pattern_match);
-
-        // dump_syntax_node(pattern_match.syntax->self);
-
         match_captures(start, end, &pattern_match,
                        pattern_match.syntax->captures, pattern_match.matches,
                        pattern_match.matches, processor);
 
         end = start + pattern_match.matches[0].end;
         start = start + pattern_match.matches[0].start;
-
-        // printf("]]]]]]]]\n");
       }
     }
 

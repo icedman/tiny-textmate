@@ -28,7 +28,7 @@ static void post_process_syntax(TxSyntaxNode *n) {
       } else {
         // external?
         syntax->include_external = true;
-        printf("external %s\n", path);
+        // printf("external %s\n", path);
       }
 
       if (repo_node) {
@@ -162,7 +162,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           if (capture_item) {
             TxSyntaxNode *capture_node = txn_new_syntax();
             txn_set(captures, capture_key, capture_node);
-            txn_syntax_value(captures)->capture_refs[j+1] = capture_node;
+            txn_syntax_value(captures)->capture_refs[j + 1] = capture_node;
             parse_syntax(capture_item, root, capture_node);
           }
         }
@@ -389,6 +389,22 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
   }
 
   {
+    cJSON *colors = cJSON_GetObjectItem(obj, "colors");
+    if (colors) {
+      cJSON *item = colors->child;
+      while (item) {
+        // printf("%s:%s\n", item->string, item->valuestring);
+        if (item->valuestring) {
+          TxNode *n = txn_set(token_colors, item->string,
+            txn_new_string(item->valuestring));
+          txt_parse_color(item->valuestring, &n->number_value);
+        }
+        item = item->next;
+      }
+    }
+  }
+
+  {
     cJSON *tokenColors = cJSON_GetObjectItem(obj, "tokenColors");
     if (tokenColors) {
       size_t sz = cJSON_GetArraySize(tokenColors);
@@ -405,15 +421,17 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
           continue;
 
         if (scope && scope->valuestring) {
-          txn_set(token_colors, scope->valuestring,
+          TxNode *n = txn_set(token_colors, scope->valuestring,
                   txn_new_string(fg->valuestring));
+          txt_parse_color(fg->valuestring, &n->number_value);
         } else if (scope) {
           size_t scopes = cJSON_GetArraySize(scope);
           for (int j = 0; j < scopes; j++) {
             cJSON *scope_item = cJSON_GetArrayItem(scope, j);
             if (scope_item && scope_item->valuestring) {
-              txn_set(token_colors, scope_item->valuestring,
+              TxNode *n = txn_set(token_colors, scope_item->valuestring,
                       txn_new_string(fg->valuestring));
+              txt_parse_color(fg->valuestring, &n->number_value);
             }
           }
         }

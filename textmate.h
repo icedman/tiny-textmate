@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define TX_SYNTAX_VERBOSE_REGEX
-// #define TX_SYNTAX_RECOMPILE_REGEX_END <<
+#define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TS_MAX_STACK_DEPTH 32
 #define TS_MAX_PATTERN_DEPTH 16
@@ -123,8 +123,8 @@ typedef struct {
 typedef struct {
   size_t start;
   size_t end;
-  char_u* fg;
-  char_u* bg;
+  uint32_t fg;
+  uint32_t bg;
   bool italic;
   bool bold;
   bool underline;
@@ -158,12 +158,15 @@ typedef struct {
 typedef struct _TxProcessor {
   void (*line_start)(struct TxProcessor *self, TxStateStack *stack,
                      char_u *buffer, size_t len);
-  void (*line_end)(struct TxProcessor *self, TxStateStack *stack,
-                   char_u *buffer, size_t len);
-  void (*open_tag)(struct TxProcessor *self, TxState *match);
-  void (*end_tag)(struct TxProcessor *self, TxState *match);
-  void (*capture)(struct TxProcessor *self, TxState *match);
+  void (*line_end)(struct TxProcessor *self, TxStateStack *stack);
+  void (*open_tag)(struct TxProcessor *self, TxStateStack *stack);
+  void (*close_tag)(struct TxProcessor *self, TxStateStack *stack);
+  void (*capture)(struct TxProcessor *self, TxState *match, TxCaptureList captures);
   TxStateStack line_state;
+  char_u *buffer;
+  size_t length;
+  uint32_t color;
+  void *data;
 } TxProcessor;
 
 TxNode *txn_new(char_u *name, TxValueType type);
@@ -200,7 +203,7 @@ TxPackage *txn_package_value(TxPackageNode *pkn);
 TxThemeNode *txn_new_theme();
 TxThemeNode *txn_load_theme(char_u *path);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
-void txt_style_from_scope(char_u* scope, TxTheme *theme, TxStyleSpan *style);
+bool txt_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style);
 
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
                    TxStateStack *stack, TxProcessor *processor);
@@ -246,5 +249,9 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #else
 #define DIR_SEPARATOR '\\'
 #endif
+
+bool txt_parse_color(const char_u *color, uint32_t *result);
+bool txt_color_to_rgb(uint32_t color, uint32_t result[3]);
+uint32_t txt_make_color(int r, int g, int b);
 
 #endif // TEXTMATE_H

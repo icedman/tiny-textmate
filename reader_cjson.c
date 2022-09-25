@@ -1,8 +1,11 @@
 #include "cJSON.h"
 #include "textmate.h"
 
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 static void post_process_syntax(TxSyntaxNode *n) {
   TxSyntax *syntax = txn_syntax_value(n);
@@ -24,12 +27,16 @@ static void post_process_syntax(TxSyntaxNode *n) {
         }
       } else {
         // external?
-        syntax->include_scope = include_node->string_value;
-        printf("external %s\n", syntax->include_scope);
+        syntax->include_external = true;
+        // printf("external %s\n", path);
       }
 
       if (repo_node) {
-        syntax->include = txn_get(repo_node, path);
+        TxNode *include_node = txn_get(repo_node, path);
+        if (include_node) {
+          syntax->include = include_node;
+          // printf("include! %s\n", path);
+        }
       }
     }
   }
@@ -72,19 +79,29 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       if (item && item->valuestring) {
         TxSyntaxNode *regex_node = txn_new_syntax();
         if (item->valuestring) {
-          char_u pattern[TS_SCOPE_NAME_LENGTH] = "";
-          char_u *use_pattern = item->valuestring;
-
-          if (tx_rebuild_end_pattern(item->valuestring, pattern, NULL)) {
-            use_pattern = pattern;
-            printf(">>>>>>>>>>>>>>>> %s\n", pattern);
-          }
 
 #ifdef TX_SYNTAX_VERBOSE_REGEX
-          txn_set_string_value(regex_node, pattern);
+          txn_set_string_value(regex_node, item->valuestring);
 #endif
 
-          *regexes[i] = tx_compile_pattern(use_pattern);
+#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
+          if (strcmp(key, "end") == 0) {
+            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3", "\\4",  "\\5",
+                                      "\\6",  "\\7",  "\\8", "\\9",  "\\10",
+                                      "\\11", "\\12", "\13", "\\14", "\\15",
+                                      "\\16", 0};
+            for (int j = 0; j < TS_MAX_CAPTURES; j++) {
+              if (strstr(item->valuestring, capture_keys[j])) {
+                TxNode *ns = txn_new_string(item->valuestring);
+                txn_set(node, "end_pattern", ns);
+                txn_syntax_value(node)->end_pattern = ns->string_value;
+                break;
+              }
+            }
+          }
+#endif
+
+          *regexes[i] = tx_compile_pattern(item->valuestring);
         }
         txn_set(node, key, regex_node);
       }
@@ -379,7 +396,7 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
         // printf("%s:%s\n", item->string, item->valuestring);
         if (item->valuestring) {
           TxNode *n = txn_set(token_colors, item->string,
-            txn_new_string(item->valuestring));
+                              txn_new_string(item->valuestring));
           txt_parse_color(item->valuestring, &n->number_value);
         }
         item = item->next;
@@ -405,7 +422,7 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
 
         if (scope && scope->valuestring) {
           TxNode *n = txn_set(token_colors, scope->valuestring,
-                  txn_new_string(fg->valuestring));
+                              txn_new_string(fg->valuestring));
           txt_parse_color(fg->valuestring, &n->number_value);
         } else if (scope) {
           size_t scopes = cJSON_GetArraySize(scope);
@@ -413,7 +430,7 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
             cJSON *scope_item = cJSON_GetArrayItem(scope, j);
             if (scope_item && scope_item->valuestring) {
               TxNode *n = txn_set(token_colors, scope_item->valuestring,
-                      txn_new_string(fg->valuestring));
+                                  txn_new_string(fg->valuestring));
               txt_parse_color(fg->valuestring, &n->number_value);
             }
           }

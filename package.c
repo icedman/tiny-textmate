@@ -6,7 +6,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-
 TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   char_u file_name[MAX_PATH_LENGTH] = "";
 
@@ -66,12 +65,12 @@ lang_found:
   if (language) {
     TxNode *scope = txn_get(language, "scopeName");
     if (scope) {
-      printf("found %s\n", scope->string_value);
+      // printf("found %s\n", scope->string_value);
       return tx_syntax_from_scope(scope->string_value);
     }
   }
 
-  printf("not found!\n");
+  // printf("not found!\n");
   return NULL;
 }
 
@@ -79,7 +78,7 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
   // check global repository
   TxSyntaxNode *syntax_node = txn_get(tx_global_repository(), scope);
   if (syntax_node) {
-    printf("found at repository!\n");
+    // printf("found at repository!\n");
     return syntax_node;
   }
 
@@ -94,7 +93,7 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
       if (grammar_node) {
         TxNode *path = txn_get(grammar_node, "fullPath");
         if (path) {
-          printf("%s\n", path->string_value);
+          // printf("%s\n", path->string_value);
           TxSyntaxNode *syntax_node = txn_load_syntax(path->string_value);
           if (syntax_node) {
             return txn_set(tx_global_repository(), scope, syntax_node);

@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define TX_SYNTAX_VERBOSE_REGEX
-#define TX_SYNTAX_RECOMPILE_REGEX_END
+// #define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TS_MAX_STACK_DEPTH 32
 #define TS_MAX_PATTERN_DEPTH 16
@@ -77,8 +77,8 @@ typedef struct _TxSyntax {
   char_u *name;
   char_u *content_name;
   char_u *scope_name;
-
-  char_u *include_scope;
+  
+  bool include_external;
 
   regex_t *rx_first_line_match;     // unused
   regex_t *rx_folding_start_marker; // unused
@@ -158,10 +158,12 @@ typedef struct _TxProcessor {
   void (*line_end)(struct TxProcessor *self, TxStateStack *stack);
   void (*open_tag)(struct TxProcessor *self, TxStateStack *stack);
   void (*close_tag)(struct TxProcessor *self, TxStateStack *stack);
-  void (*capture)(struct TxProcessor *self, TxState *match, TxCaptureList captures);
+  void (*capture)(struct TxProcessor *self, TxState *match,
+                  TxCaptureList captures);
   TxStateStack state_stack;
   char_u *buffer;
   size_t length;
+  uint32_t color;
   void *data;
 } TxProcessor;
 
@@ -192,8 +194,8 @@ TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char_u *path);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
 
-bool tx_rebuild_end_pattern(char_u *pattern, char_u* target,
-                                TxCaptureList capture_list);
+bool tx_rebuild_end_pattern(char_u *pattern, char_u *target,
+                            TxCaptureList capture_list);
 
 TxPackageNode *txn_new_package();
 TxPackageNode *txn_load_package(char_u *path);

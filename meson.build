@@ -24,11 +24,19 @@ cjson_inc = [
   './cJSON'
 ]
 
+munit_files = [
+  './munit/munit.c'
+]
+
+munit_inc = [
+  './munit'
+]
+
 onigmo_dep = dependency('onigmo', required: true, disabler: true)
 
 executable('tiny',
   'main.c',
-  'tests/dump.c',
+  'samples/dump.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
@@ -36,51 +44,60 @@ executable('tiny',
 )
 
 executable('test_syntax',
-  'tests/syntax.c',
-  'tests/dump.c',
+  'samples/syntax.c',
+  'samples/dump.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_package',
-  'tests/package.c',
-  'tests/dump.c',
+executable('sample_package',
+  'samples/package.c',
+  'samples/dump.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_theme',
-  'tests/theme.c',
-  'tests/dump.c',
+executable('sample_theme',
+  'samples/theme.c',
+  'samples/dump.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_list',
-  'tests/dump.c',
-  'tests/list.c',
+executable('sample_list',
+  'samples/dump.c',
+  'samples/list.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_json',
-  'tests/dump.c',
-  'tests/json.c',
+executable('sample_json',
+  'samples/dump.c',
+  'samples/json.c',
   cjson_files,
   textmate_files,
   include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_regex',
-  'tests/regex.c',
+executable('sample_regex',
+  'samples/regex.c',
+  dependencies: [ onigmo_dep ]
+)
+
+executable('tests',
+  'tests/tests.c',
+  munit_files,
+  cjson_files,
+  textmate_files,
+  include_directories: [ munit_inc, cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )

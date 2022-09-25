@@ -27,9 +27,8 @@ bool txt_color_to_rgb(uint32_t color, uint32_t result[3]) {
   return true;
 }
 
-uint32_t txt_make_color(int r, int g, int b)
-{
-    return (r << 24) | (g << 16) | (b << 8) | 0xff;
+uint32_t txt_make_color(int r, int g, int b) {
+  return (r << 24) | (g << 16) | (b << 8) | 0xff;
 }
 
 bool txt_parse_color(const char_u *color, uint32_t *result) {

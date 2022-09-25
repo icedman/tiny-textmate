@@ -1,4 +1,4 @@
-tests/sqlite3.c
-tests/tinywl.c
+*/sqlite3.c
+*/tinywl.c
 build
 *.log

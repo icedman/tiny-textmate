@@ -33,7 +33,8 @@ static void expand_match(TxState *state) {
 }
 
 static void expand_captures(TxState *state, TxCaptureList target_capture,
-                          TxCaptureList source_capture, TxProcessor *processor) {
+                            TxCaptureList source_capture,
+                            TxProcessor *processor) {
   for (int j = 0; j < state->count; j++) {
     int capture_idx = j;
     if (capture_idx >= TS_MAX_CAPTURES)
@@ -66,26 +67,8 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
   TxSyntax *syntax = txn_syntax_value(node);
 
   if (syntax) {
-    if (syntax->include_scope) {
-      char_u *scope = strtok(syntax->include_scope, "#");
-      printf("request external syntax %s (%s)\n", syntax->include_scope, scope);
-
-      TxSyntaxNode* include_node = tx_syntax_from_scope(scope);
-      char_u *include_name = strchr(syntax->include_scope, '#');
-      if (include_name) {
-        include_node = txn_get(txn_syntax_value(include_node), include_name+1);
-      }
-      syntax->include_scope = NULL;
-      if (include_node) {
-        syntax->include = include_node;
-        syntax = txn_syntax_value_proxy(include_node);
-
-        // todo request external syntax
-        // resolve source scope
-        // resolve #hash
-        // tx_syntax_from_scope
-        // resolve #hash from local repository
-      }
+    if (!syntax->include && syntax->include_external) {
+      syntax->include_external = false;
     }
 
     if (syntax->include) {
@@ -312,8 +295,8 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
   expand_captures(state, target_capture, source_capture, processor);
 }
 
-bool tx_rebuild_end_pattern(char_u *pattern, char_u* target,
-                                TxCaptureList capture_list) {
+bool tx_rebuild_end_pattern(char_u *pattern, char_u *target,
+                            TxCaptureList capture_list) {
 
   char_u new_pattern[TS_SCOPE_NAME_LENGTH] = "";
   strncpy(new_pattern, pattern, TS_SCOPE_NAME_LENGTH);
@@ -321,38 +304,38 @@ bool tx_rebuild_end_pattern(char_u *pattern, char_u* target,
 
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
 
-    char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
-                              "\\6", "\\7", "\\8", "\\9", 0};
+  char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
+                            "\\6", "\\7", "\\8", "\\9", 0};
 
-    char_u trailer[TS_SCOPE_NAME_LENGTH];
+  char_u trailer[TS_SCOPE_NAME_LENGTH];
 
-    for (int j = 0; j < TS_MAX_CAPTURES; j++) {
-      char_u *pos;
-      if (pos = strstr(new_pattern, capture_keys[j])) {
-        strcpy(trailer, pos + strlen(capture_keys[j]));
-        char_u replace[TS_SCOPE_NAME_LENGTH] = "[a-zA-Z]*";
-        
-        dynamic = true;
+  for (int j = 0; j < TS_MAX_CAPTURES; j++) {
+    char_u *pos;
+    if (pos = strstr(new_pattern, capture_keys[j])) {
+      strcpy(trailer, pos + strlen(capture_keys[j]));
+      char_u replace[TS_SCOPE_NAME_LENGTH] = "[a-zA-Z]*";
 
-        if (capture_list) {
-          int capture_idx = j;
-          int len =
-              capture_list[capture_idx].end - capture_list[capture_idx].start;
-          if (len >= TS_SCOPE_NAME_LENGTH) {
-            len = TS_SCOPE_NAME_LENGTH;
-          }
-          if (len != 0) {
-            memcpy(replace,
-                   capture_list[capture_idx].buffer +
-                       capture_list[capture_idx].start,
-                   len * sizeof(char_u));
-            replace[len] = 0;
-          }
+      dynamic = true;
+
+      if (capture_list) {
+        int capture_idx = j;
+        int len =
+            capture_list[capture_idx].end - capture_list[capture_idx].start;
+        if (len >= TS_SCOPE_NAME_LENGTH) {
+          len = TS_SCOPE_NAME_LENGTH;
         }
-
-        sprintf(pos, "%s%s", replace, trailer);
+        if (len != 0) {
+          memcpy(replace,
+                 capture_list[capture_idx].buffer +
+                     capture_list[capture_idx].start,
+                 len * sizeof(char_u));
+          replace[len] = 0;
+        }
       }
+
+      sprintf(pos, "%s%s", replace, trailer);
     }
+  }
 #endif
   strncpy(target, new_pattern, TS_SCOPE_NAME_LENGTH);
   return dynamic;
@@ -421,7 +404,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       start = start + pattern_match.matches[0].start;
 
       if (processor && processor->close_tag) {
-        txs_top(stack)->matches[0].end = pattern_match.offset + pattern_match.matches[0].end;
+        txs_top(stack)->matches[0].end =
+            pattern_match.offset + pattern_match.matches[0].end;
         processor->close_tag(processor, stack);
       }
 
@@ -449,7 +433,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
         txs_push(stack, &pattern_match);
         if (processor && processor->open_tag) {
-          strcpy(txs_top(stack)->matches[0].expanded, pattern_match.matches[0].expanded);
+          strcpy(txs_top(stack)->matches[0].expanded,
+                 pattern_match.matches[0].expanded);
           processor->open_tag(processor, stack);
         }
 

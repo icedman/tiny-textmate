@@ -1,0 +1,98 @@
+{
+	"name": "nunjucks-template",
+	"displayName": "Nunjucks Template",
+	"description": "Formatting, Syntax Highlighting, Hover, and Snippets for Nunjucks",
+	"version": "0.5.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/eseom/nunjucks-template"
+	},
+	"publisher": "eseom",
+	"engines": {
+		"vscode": "^1.19.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"icon": "images/icon.png",
+	"activationEvents": [
+		"onLanguage:njk"
+	],
+	"main": "./out/extension",
+	"contributes": {
+		"configuration": {
+			"title": "NunjucksTemplate",
+			"properties": {
+				"nunjucksTemplate.preserveEmptyLine": {
+					"type": "number",
+					"default": 0,
+					"description": "empty lines number to keep at formatting"
+				}
+			}
+		},
+		"snippets": [
+			{
+				"language": "njk",
+				"path": "./assets/snippets/snippets.json"
+			}
+		],
+		"commands": [],
+		"languages": [
+			{
+				"id": "njk",
+				"aliases": [
+					"Nunjucks",
+					"njk"
+				],
+				"extensions": [
+					".njk"
+				],
+				"configuration": "./assets/languages/configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "njk",
+				"scopeName": "source.njk",
+				"path": "./assets/syntaxes/njk.json"
+			},
+			{
+				"language": "njk",
+				"scopeName": "source.html",
+				"path": "./assets/syntaxes/html.json"
+			},
+			{
+				"language": "njk",
+				"scopeName": "text.html.njk",
+				"path": "./assets/syntaxes/njk-html.json"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"test": "npm run compile && node ./node_modules/vscode/bin/test"
+	},
+	"devDependencies": {
+		"@types/mocha": "^2.2.42",
+		"@types/node": "^7.10.14",
+		"ts-node": "^10.7.0",
+		"typescript": "^4.6.3",
+		"vscode": "^1.1.37"
+	},
+	"dependencies": {
+		"prettydiff": "^101.2.6"
+	},
+	"__metadata": {
+		"id": "ebdde13b-e0af-4d80-a28c-8a65daf6a554",
+		"publisherId": "e3047e78-d502-451f-9f97-702734dc1a8e",
+		"publisherDisplayName": "eseom",
+		"targetPlatform": "undefined",
+		"updated": false,
+		"isPreReleaseVersion": false,
+		"preRelease": false,
+		"installedTimestamp": 1649859547977
+	}
+}

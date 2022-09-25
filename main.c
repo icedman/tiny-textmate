@@ -17,36 +17,29 @@ static void open_tag(TxProcessor *self, TxStateStack *stack) {
 
   if (_debug) {
     printf("{{{<%s> (%d-%d)\n", top->matches[0].expanded,
-          top->matches[0].start + top->offset,
-            top->matches[0].end + top->offset
-            );
+           top->matches[0].start + top->offset,
+           top->matches[0].end + top->offset);
   }
-
-  // TxTheme *theme = (TxTheme *)self->data;
-  // TxStyleSpan span;
-  // if (txt_style_from_scope(top->matches[0].expanded, theme, &span)) {
-  //   self->color = span.fg;
-  // }
 }
 
 static void close_tag(TxProcessor *self, TxStateStack *stack) {
   TxState *top = txs_top(stack);
 
-  for(int i=self->state_stack.size; i>0; i--) {
-    TxState *state = &self->state_stack.states[i-1];
-    for(int j=state->count; j>0; j--) {
-      if (strcmp(state->matches[j-1].expanded, top->matches[0].expanded) == 0) {
-        state->matches[j-1].end = top->matches[0].end;
-        break;
+  for (int i = self->state_stack.size; i > 0; i--) {
+    TxState *state = &self->state_stack.states[i - 1];
+    for (int j = state->count; j > 0; j--) {
+      if (strcmp(state->matches[j - 1].expanded, top->matches[0].expanded) ==
+          0) {
+        state->matches[j - 1].end = top->offset + top->matches[0].end;
+        // break;
       }
     }
   }
 
   if (_debug) {
     printf("<%s> (%d-%d) }}}\n", top->matches[0].expanded,
-      top->matches[0].start + top->offset,
-      top->matches[0].end + top->offset
-    );
+           top->matches[0].start + top->offset,
+           top->matches[0].end + top->offset);
   }
 }
 
@@ -77,7 +70,7 @@ static void line_end(TxProcessor *self, TxStateStack *stack) {
 
   int32_t clr = -1;
   int32_t current_clr = -1;
-  for(int k = 0; k < self->length; k++) {
+  for (int k = 0; k < self->length; k++) {
     TxCapture *_c = NULL;
     clr = -1;
     for (int i = 0; i < state_stack->size; i++) {
@@ -89,7 +82,8 @@ static void line_end(TxProcessor *self, TxStateStack *stack) {
         TxCapture *capture = &state->matches[capture_idx];
         if (strlen(capture->expanded) == 0 || capture->start == capture->end)
           continue;
-        if (capture->start + state->offset <= k && k < capture->end + state->offset) {
+        if (capture->start + state->offset <= k &&
+            k < capture->end + state->offset) {
           _c = capture;
           TxStyleSpan span;
           if (txt_style_from_scope(_c->expanded, theme, &span)) {
@@ -115,8 +109,7 @@ static void line_end(TxProcessor *self, TxStateStack *stack) {
 }
 
 static void line_start_(TxProcessor *self, TxStateStack *stack, char_u *buffer,
-                       size_t len)
-{
+                        size_t len) {
   char temp[1024] = "";
   memcpy(temp, buffer, sizeof(char_u) * len);
   printf("%s\n", temp);
@@ -145,9 +138,8 @@ static void line_end_(TxProcessor *self, TxStateStack *stack) {
       }
 
       printf("\x1b[38;2;%d;%d;%dm", rgb[0], rgb[1], rgb[2]);
-      printf("%d (%ld-%ld) [%s]\n", capture_idx,
-            capture->start + state->offset,
-            capture->end + state->offset, capture->expanded);
+      printf("%d (%ld-%ld) [%s]\n", capture_idx, capture->start + state->offset,
+             capture->end + state->offset, capture->expanded);
       printf("\x1b[0m");
     }
   }
@@ -166,34 +158,34 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
-  char *default_path = "./tests/simple.c";
+  char *default_path = "./samples/simple.c";
   char *path = default_path;
 
   char *default_grammar_path = NULL;
   char *grammar_path = default_grammar_path;
 
-  char *default_theme_path = "./tests/monokai.json";
+  char *default_theme_path = "./samples/monokai.json";
   char *theme_path = default_theme_path;
 
   char *default_extensions_path = "/home/iceman/.editor/extensions";
   char *extensions_path = default_extensions_path;
 
   if (argc > 1) {
-    path = argv[argc-1];
+    path = argv[argc - 1];
   }
-  for(int i=1; i<argc-1; i++) {
-    if (strcmp(argv[i-1], "-d") == 0) {
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "-d") == 0) {
       processor.line_start = line_start_;
       processor.line_end = line_end_;
       _debug = true;
     }
-    if (strcmp(argv[i-1], "-t") == 0) {
+    if (strcmp(argv[i - 1], "-t") == 0) {
       theme_path = argv[i];
     }
-    if (strcmp(argv[i-1], "-l") == 0) {
+    if (strcmp(argv[i - 1], "-l") == 0) {
       grammar_path = argv[i];
     }
-    if (strcmp(argv[i-1], "-x") == 0) {
+    if (strcmp(argv[i - 1], "-x") == 0) {
       extensions_path = argv[i];
     }
   }
@@ -203,7 +195,8 @@ int main(int argc, char **argv) {
   TxThemeNode *theme = txn_load_theme(theme_path);
   processor.data = txn_theme_value(theme);
 
-  TxSyntaxNode *root = grammar_path ? txn_load_syntax(grammar_path) : tx_syntax_from_path(path);
+  TxSyntaxNode *root =
+      grammar_path ? txn_load_syntax(grammar_path) : tx_syntax_from_path(path);
   if (grammar_path) {
     txn_set(tx_global_repository(), "source.x", root);
   }
@@ -231,7 +224,7 @@ int main(int argc, char **argv) {
 
     int len = strlen(temp);
     // printf("%s", temp);
-    tx_parse_line(temp, temp + len, &stack, &processor);
+    tx_parse_line(temp, temp + len + 1, &stack, &processor);
     strcpy(temp, "");
 
     // char nl[] = "\n";

@@ -87,9 +87,6 @@ typedef struct _TxSyntax {
   regex_t *rx_begin;
   regex_t *rx_end;
 
-  struct TxSyntaxNode *end;
-  char_u *end_pattern;
-
 } TxSyntax;
 
 typedef struct {
@@ -194,6 +191,9 @@ TxNode *txn_root(TxNode *node);
 TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char_u *path);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
+
+bool tx_rebuild_end_pattern(char_u *pattern, char_u* target,
+                                TxCaptureList capture_list);
 
 TxPackageNode *txn_new_package();
 TxPackageNode *txn_load_package(char_u *path);

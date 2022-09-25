@@ -67,8 +67,14 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 
   if (syntax) {
     if (syntax->include_scope) {
-      printf("request external syntax %s\n", syntax->include_scope);
-      TxSyntaxNode* include_node = tx_syntax_from_scope(syntax->include_scope);
+      char_u *scope = strtok(syntax->include_scope, "#");
+      printf("request external syntax %s (%s)\n", syntax->include_scope, scope);
+
+      TxSyntaxNode* include_node = tx_syntax_from_scope(scope);
+      char_u *include_name = strchr(syntax->include_scope, '#');
+      if (include_name) {
+        include_node = txn_get(txn_syntax_value(include_node), include_name+1);
+      }
       syntax->include_scope = NULL;
       if (include_node) {
         syntax->include = include_node;
@@ -306,55 +312,50 @@ static void match_captures(char_u *buffer_start, char_u *buffer_end,
   expand_captures(state, target_capture, source_capture, processor);
 }
 
-static void rebuild_end_pattern(TxSyntax *syntax, char_u *pattern,
+bool tx_rebuild_end_pattern(char_u *pattern, char_u* target,
                                 TxCaptureList capture_list) {
 
+  char_u new_pattern[TS_SCOPE_NAME_LENGTH] = "";
+  strncpy(new_pattern, pattern, TS_SCOPE_NAME_LENGTH);
+  bool dynamic = false;
+
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-  if (syntax->end_pattern) {
+
     char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
                               "\\6", "\\7", "\\8", "\\9", 0};
 
-    int len = strlen(syntax->end_pattern) + 128;
-    char_u new_pattern[TS_SCOPE_NAME_LENGTH];
     char_u trailer[TS_SCOPE_NAME_LENGTH];
-    strcpy(new_pattern, syntax->end_pattern);
 
     for (int j = 0; j < TS_MAX_CAPTURES; j++) {
       char_u *pos;
       if (pos = strstr(new_pattern, capture_keys[j])) {
         strcpy(trailer, pos + strlen(capture_keys[j]));
         char_u replace[TS_SCOPE_NAME_LENGTH] = "[a-zA-Z]*";
+        
+        dynamic = true;
 
-        int capture_idx = j + 1;
-        int len =
-            capture_list[capture_idx].end - capture_list[capture_idx].start;
-        if (len >= TS_SCOPE_NAME_LENGTH) {
-          len = TS_SCOPE_NAME_LENGTH;
-        }
-        if (len != 0) {
-          memcpy(replace,
-                 capture_list[capture_idx].buffer +
-                     capture_list[capture_idx].start,
-                 len * sizeof(char_u));
-          replace[len] = 0;
+        if (capture_list) {
+          int capture_idx = j;
+          int len =
+              capture_list[capture_idx].end - capture_list[capture_idx].start;
+          if (len >= TS_SCOPE_NAME_LENGTH) {
+            len = TS_SCOPE_NAME_LENGTH;
+          }
+          if (len != 0) {
+            memcpy(replace,
+                   capture_list[capture_idx].buffer +
+                       capture_list[capture_idx].start,
+                   len * sizeof(char_u));
+            replace[len] = 0;
+          }
         }
 
         sprintf(pos, "%s%s", replace, trailer);
       }
     }
-
-    regex_t *new_regex = tx_compile_pattern(new_pattern);
-    if (new_regex) {
-      // printf("recompile regex %s\n", new_pattern);
-      if (syntax->rx_end) {
-        onig_free(syntax->rx_end);
-        syntax->rx_end = NULL;
-      }
-      syntax->rx_end = new_regex;
-    }
-  }
-
 #endif
+  strncpy(target, new_pattern, TS_SCOPE_NAME_LENGTH);
+  return dynamic;
 }
 
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
@@ -441,9 +442,9 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
           // todo... syntax node must be set a load time... dynamic data should
           // all be at TxState
-          rebuild_end_pattern(pattern_match.syntax,
-                              pattern_match.syntax->end_pattern,
-                              pattern_match.matches);
+          // tx_rebuild_end_pattern(pattern_match.syntax,
+          //                     pattern_match.syntax->end_pattern,
+          //                     pattern_match.matches);
         }
 
         txs_push(stack, &pattern_match);

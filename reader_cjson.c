@@ -72,29 +72,19 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       if (item && item->valuestring) {
         TxSyntaxNode *regex_node = txn_new_syntax();
         if (item->valuestring) {
+          char_u pattern[TS_SCOPE_NAME_LENGTH] = "";
+          char_u *use_pattern = item->valuestring;
+
+          if (tx_rebuild_end_pattern(item->valuestring, pattern, NULL)) {
+            use_pattern = pattern;
+            printf(">>>>>>>>>>>>>>>> %s\n", pattern);
+          }
 
 #ifdef TX_SYNTAX_VERBOSE_REGEX
-          txn_set_string_value(regex_node, item->valuestring);
+          txn_set_string_value(regex_node, pattern);
 #endif
 
-#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-          if (strcmp(key, "end") == 0) {
-            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3", "\\4",  "\\5",
-                                      "\\6",  "\\7",  "\\8", "\\9",  "\\10",
-                                      "\\11", "\\12", "\13", "\\14", "\\15",
-                                      "\\16", 0};
-            for (int j = 0; j < TS_MAX_CAPTURES; j++) {
-              if (strstr(item->valuestring, capture_keys[j])) {
-                TxNode *ns = txn_new_string(item->valuestring);
-                txn_set(node, "end_pattern", ns);
-                txn_syntax_value(node)->end_pattern = ns->string_value;
-                break;
-              }
-            }
-          }
-#endif
-
-          *regexes[i] = tx_compile_pattern(item->valuestring);
+          *regexes[i] = tx_compile_pattern(use_pattern);
         }
         txn_set(node, key, regex_node);
       }

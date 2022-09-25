@@ -94,6 +94,7 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
       if (grammar_node) {
         TxNode *path = txn_get(grammar_node, "fullPath");
         if (path) {
+          printf("%s\n", path->string_value);
           TxSyntaxNode *syntax_node = txn_load_syntax(path->string_value);
           if (syntax_node) {
             return txn_set(tx_global_repository(), scope, syntax_node);

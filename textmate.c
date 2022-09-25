@@ -238,10 +238,7 @@ static void destroy_syntax(TxNode *node) {
   TxSyntaxNode *syntax_node = (TxSyntaxNode *)node;
   TxSyntax *syntax = txn_syntax_value(syntax_node);
 
-  regex_t **regexes[] = {&syntax->rx_first_line_match,
-                         &syntax->rx_folding_start_marker,
-                         &syntax->rx_folding_Stop_marker,
-                         &syntax->rx_match,
+  regex_t **regexes[] = {&syntax->rx_match,
                          &syntax->rx_begin,
                          &syntax->rx_end,
                          -1};
@@ -300,40 +297,6 @@ TxTheme *txn_theme_value(TxThemeNode *node) {
   return node->self.object_type == TxObjectTheme ? &node->theme : NULL;
 }
 
-void txs_init_stack(TxStateStack *stack) {
-  memset(stack, 0, sizeof(TxStateStack));
-}
-
-void txs_init_state(TxState *state) { memset(state, 0, sizeof(TxState)); }
-
-void txp_init_processor(TxProcessor *processor) {
-  memset(processor, 0, sizeof(TxProcessor));
-}
-
-void txs_push(TxStateStack *stack, TxState *state) {
-  // replace last on the stack
-  if (stack->size >= TS_MAX_STACK_DEPTH - 1) {
-    stack->size--;
-  }
-  memcpy(&stack->states[stack->size], state, sizeof(TxState));
-  stack->size++;
-}
-
-void txs_pop(TxStateStack *stack) {
-  if (stack->size > 0) {
-    stack->size--;
-  } else {
-    // error!
-  }
-}
-
-TxState *txs_top(TxStateStack *stack) {
-  if (stack->size == 0) {
-    return NULL;
-  }
-  return &stack->states[stack->size - 1];
-}
-
 void tx_initialize() {
   OnigEncoding use_encs[1];
   use_encs[0] = ONIG_ENCODING_ASCII;
@@ -366,6 +329,46 @@ TxNode *tx_global_packages() {
     global_packages = txn_new_array();
   }
   return global_packages;
+}
+
+void txs_init_state(TxState *state)
+{
+  memset(state, 0, sizeof(TxState));
+}
+
+void txs_init_stack(TxStateStack *stack, TxSyntax *syntax)
+{
+    memset(stack, 0, sizeof(TxStateStack));
+    if (syntax) {
+      TxState state;
+      txs_init_state(&state);
+      state.syntax = syntax;
+      txs_push(stack, &state);
+    }
+}
+
+void txs_push(TxStateStack *stack, TxState *state) {
+  // replace last on the stack
+  if (stack->size >= TS_MAX_STACK_DEPTH - 1) {
+    stack->size--;
+  }
+  memcpy(&stack->states[stack->size], state, sizeof(TxState));
+  stack->size++;
+}
+
+void txs_pop(TxStateStack *stack) {
+  if (stack->size > 0) {
+    stack->size--;
+  } else {
+    // error!
+  }
+}
+
+TxState *txs_top(TxStateStack *stack) {
+  if (stack->size == 0) {
+    return NULL;
+  }
+  return &stack->states[stack->size - 1];
 }
 
 void tx_stats() {

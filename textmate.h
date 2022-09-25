@@ -11,7 +11,6 @@
 #define TS_MAX_STACK_DEPTH 32
 #define TS_MAX_PATTERN_DEPTH 16
 #define TS_MAX_MATCHES 9
-#define TS_MAX_CAPTURES TS_MAX_MATCHES
 #define TS_SCOPE_NAME_LENGTH 128
 
 #ifndef char_u
@@ -70,9 +69,8 @@ typedef struct _TxSyntax {
   struct TxSyntaxNode *patterns;
   struct TxSyntaxNode *include;
   struct TxSyntaxNode *captures;
+  struct TxSyntaxNode *begin_captures;
   struct TxSyntaxNode *end_captures;
-
-  struct TxSyntaxNode *capture_refs[TS_MAX_CAPTURES];
 
   char_u *name;
   char_u *content_name;
@@ -80,12 +78,13 @@ typedef struct _TxSyntax {
   
   bool include_external;
 
-  regex_t *rx_first_line_match;     // unused
-  regex_t *rx_folding_start_marker; // unused
-  regex_t *rx_folding_Stop_marker;  // unused
   regex_t *rx_match;
   regex_t *rx_begin;
   regex_t *rx_end;
+
+  char_u *rxs_match;
+  char_u *rxs_begin;
+  char_u *rxs_end;
 
 } TxSyntax;
 
@@ -128,44 +127,29 @@ typedef struct {
 } TxStyleSpan;
 
 typedef struct {
+  char_u *anchor;
+  char_u *buffer;
   size_t start;
   size_t end;
-  char_u *buffer;
-  char_u *scope;
-  char_u expanded[TS_SCOPE_NAME_LENGTH];
-  char_u name[TS_SCOPE_NAME_LENGTH];
-} TxCapture;
-
-typedef TxCapture TxMatchRange;
-typedef TxCapture TxCaptureList[TS_MAX_CAPTURES];
+} TxMatchRange;
 
 typedef struct {
   TxSyntax *syntax;
-  uint8_t count;
+  size_t size;
   size_t offset;
-  TxCaptureList matches;
+  TxMatchRange matches[TS_MAX_MATCHES];
 } TxState;
 
-// mem size too big
 typedef struct {
-  uint8_t size;
+  size_t size;
   TxState states[TS_MAX_STACK_DEPTH];
 } TxStateStack;
 
-typedef struct _TxProcessor {
-  void (*line_start)(struct TxProcessor *self, TxStateStack *stack,
-                     char_u *buffer, size_t len);
-  void (*line_end)(struct TxProcessor *self, TxStateStack *stack);
-  void (*open_tag)(struct TxProcessor *self, TxStateStack *stack);
-  void (*close_tag)(struct TxProcessor *self, TxStateStack *stack);
-  void (*capture)(struct TxProcessor *self, TxState *match,
-                  TxCaptureList captures);
-  TxStateStack state_stack;
-  char_u *buffer;
-  size_t length;
-  uint32_t color;
-  void *data;
-} TxProcessor;
+void txs_init_state(TxState *state);
+void txs_init_stack(TxStateStack *state, TxSyntax *syntax);
+void txs_push(TxStateStack *stack, TxState *state);
+void txs_pop(TxStateStack *stack);
+TxState *txs_top(TxStateStack *stack);
 
 TxNode *txn_new(char_u *name, TxValueType type);
 TxNode *txn_new_number(int32_t number);
@@ -194,9 +178,6 @@ TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char_u *path);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
 
-bool tx_rebuild_end_pattern(char_u *pattern, char_u *target,
-                            TxCaptureList capture_list);
-
 TxPackageNode *txn_new_package();
 TxPackageNode *txn_load_package(char_u *path);
 TxPackage *txn_package_value(TxPackageNode *pkn);
@@ -206,17 +187,7 @@ TxThemeNode *txn_load_theme(char_u *path);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
 bool txt_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style);
 
-void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
-                   TxStateStack *stack, TxProcessor *processor);
-bool tx_expand_name(char_u *scope, char_u *target, TxCaptureList capture_list);
-
-void txs_init_stack(TxStateStack *stack);
-void txs_init_state(TxState *state);
-void txs_push(TxStateStack *stack, TxState *state);
-void txs_pop(TxStateStack *stack);
-TxState *txs_top(TxStateStack *stack);
-
-void txp_init_processor(TxProcessor *processor);
+void tx_parse_line(char_u *buffer_start, char_u *buffer_end, TxStateStack *stack);
 
 void tx_initialize();
 void tx_shutdown();

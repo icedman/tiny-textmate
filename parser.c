@@ -2,65 +2,20 @@
 #include <stdio.h>
 #include <string.h>
 
-static void _dump_syntax_node(TxNode *node) {
-  if (node->name) {
-    printf("%s[%d]\\", node->name, node->index);
-  }
-  if (node->parent) {
-    _dump_syntax_node(node->parent);
-  }
+static char_u temp[1024];
+char_u* dump_range(char_u* anchor, size_t start, size_t end)
+{
+  char_u *buffer = anchor;
+  int len = (end - start);
+  memcpy(temp, buffer + start, len * sizeof(char_u));
+  temp[len] = 0;
+  return temp;
 }
 
-static void dump_syntax_node(TxNode *node) {
-  _dump_syntax_node(node);
-  printf("\n");
-}
-
-static void expand_match(TxState *state) {
-  char_u *name = state->syntax->scope_name;
-  if (!name) {
-    name = state->syntax->content_name;
-  }
-  if (!name) {
-    name = state->syntax->name;
-  }
-  if (name) {
-    char_u expanded[TS_SCOPE_NAME_LENGTH] = "";
-    tx_expand_name(name, expanded, state->matches);
-    // printf("<%ld-%ld> [%s]\n", state->matches[0].start + state->offset,
-    //        state->matches[0].end + state->offset, expanded);
-  }
-}
-
-static void expand_captures(TxState *state, TxCaptureList target_capture,
-                            TxCaptureList source_capture,
-                            TxProcessor *processor) {
-  for (int j = 0; j < state->count; j++) {
-    int capture_idx = j;
-    if (capture_idx >= TS_MAX_CAPTURES)
-      break;
-
-    TxCapture *capture = &target_capture[capture_idx];
-    if (!capture->scope) {
-      continue;
-    }
-    if (capture->start == capture->end) {
-      continue;
-    }
-
-    if (!tx_expand_name(capture->scope, capture->expanded, source_capture)) {
-      continue;
-    }
-
-    // printf("%d %d (%ld-%ld) [%s]\n", j, state->offset,
-    //        capture->start + state->offset, capture->end + state->offset,
-    //        capture->expanded);
-  }
-
-  if (processor && processor->capture) {
-    processor->capture(processor, state, target_capture);
-  }
-  // expand_match(state);
+void dump_syntax(TxSyntax *syntax) {
+  TxNode *node = syntax->self;
+  TxNode *parent = node->parent;
+  printf("> %s\n", syntax->name);
 }
 
 TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
@@ -80,14 +35,21 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
   return syntax;
 }
 
-static bool find_match(char_u *buffer_start, char_u *buffer_end, regex_t *regex,
-                       TxState *state) {
+static bool find_match(char_u* anchor, char_u *buffer_start, char_u *buffer_end, regex_t *regex, char_u *pattern, TxState *_state) {
   bool found = false;
 
+  TxState null_state;
+  txs_init_state(&null_state);
+  TxState *state = _state;
+  if (!state) {
+    state = &null_state;
+  }
   OnigRegion *region = onig_region_new();
   int r;
   unsigned char *start, *range, *end;
   unsigned int onig_options = ONIG_OPTION_NONE;
+
+  int offset = buffer_start - anchor;
 
   int count = 0;
   UChar *str = (UChar *)buffer_start;
@@ -104,90 +66,51 @@ static bool find_match(char_u *buffer_start, char_u *buffer_end, regex_t *regex,
         count = 0;
         break;
       }
-      if (state) {
-        state->matches[i].buffer = buffer_start;
-        state->matches[i].start = region->beg[i];
-        state->matches[i].end = region->end[i];
-      }
+      state->matches[i].buffer = anchor;
+      state->matches[i].start = region->beg[i] + offset;
+      state->matches[i].end = region->end[i] + offset;
     }
   }
 
+  state->size = count;
   found = count > 0;
-  if (state) {
-    state->count = count;
-  }
 
   onig_end();
   onig_region_free(region, 1);
+
+  if (found) {
+    printf("matches %s (%d-%d)", pattern, state->matches[0].start, state->matches[0].end);
+    printf(dump_range(anchor, state->matches[0].start, state->matches[0].end));
+    printf("\n");
+  }
   return found;
 }
 
-bool tx_expand_name(char_u *scope, char_u *target, TxCaptureList capture_list) {
-  char_u trailer[TS_SCOPE_NAME_LENGTH];
-  char_u *trailer_advanced = NULL;
-  char_u *placeholder = NULL;
+static TxState match_first_pattern(char_u* anchor, char_u *start, char_u *end,
+                                   TxNode *patterns);
 
-  strncpy(target, scope, TS_SCOPE_NAME_LENGTH);
-
-  bool expanded = true;
-
-  while (placeholder = strchr(target, '$')) {
-    strcpy(trailer, placeholder);
-    trailer_advanced = strchr(trailer, '.');
-    if (!trailer_advanced) {
-      trailer_advanced = trailer;
-    }
-    int capture_idx = atoi(placeholder + 1);
-
-    char_u replace[TS_SCOPE_NAME_LENGTH] = "";
-    int len = capture_list[capture_idx].end - capture_list[capture_idx].start;
-    if (len >= TS_SCOPE_NAME_LENGTH) {
-      len = TS_SCOPE_NAME_LENGTH;
-    }
-
-    if (len != 0) {
-      memcpy(replace,
-             capture_list[capture_idx].buffer + capture_list[capture_idx].start,
-             len * sizeof(char_u));
-      strncpy(capture_list[capture_idx].name, replace, TS_SCOPE_NAME_LENGTH);
-    } else {
-      expanded = false;
-    }
-
-    if (replace) {
-      sprintf(target + (placeholder - target), "%s%s", replace,
-              trailer_advanced);
-    }
-  }
-
-  return expanded;
-}
-
-static TxState match_first_pattern(char_u *buffer_start, char_u *buffer_end,
-                                   TxNode *patterns, int depth);
-
-static TxState match_first(char_u *buffer_start, char_u *buffer_end,
-                           TxSyntax *syntax, int depth) {
+static TxState match_first(char_u* anchor, char_u *start, char_u *end,
+                           TxSyntax *syntax) {
   TxState match;
   txs_init_state(&match);
 
   if (syntax->rx_match &&
-      find_match(buffer_start, buffer_end, syntax->rx_match, &match)) {
-    match.syntax = syntax;
+      find_match(anchor, start, end, syntax->rx_match, syntax->rxs_match, &match)) {
+      match.syntax = syntax;
   } else if (syntax->rx_begin &&
-             find_match(buffer_start, buffer_end, syntax->rx_begin, &match)) {
-    match.syntax = syntax;
+             find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_match, &match)) {
+      match.syntax = syntax;
   } else if (syntax->rx_end) {
     // skip
-  } else if (depth < TS_MAX_PATTERN_DEPTH) {
+  } else {
     match =
-        match_first_pattern(buffer_start, buffer_end, syntax->patterns, depth);
+        match_first_pattern(anchor, start, end, syntax->patterns);
   }
   return match;
 }
 
-static TxState match_first_pattern(char_u *buffer_start, char_u *buffer_end,
-                                   TxNode *patterns, int depth) {
+static TxState match_first_pattern(char_u* anchor, char_u *start, char_u *end,
+                                   TxNode *patterns) {
   TxState earliest_match;
   txs_init_state(&earliest_match);
 
@@ -203,12 +126,12 @@ static TxState match_first_pattern(char_u *buffer_start, char_u *buffer_end,
     TxNode *pattern_node = p;
     TxSyntax *pattern_syntax = txn_syntax_value_proxy(p);
 
-    match = match_first(buffer_start, buffer_end, pattern_syntax, depth + 1);
-    if (match.count) {
-      if (match.matches[0].start == 0) {
-        earliest_match = match;
-        break;
-      }
+    match = match_first(anchor, start, end, pattern_syntax);
+    if (match.syntax) {
+      // if (match.matches[0].start == 0) {
+      //   earliest_match = match;
+      //   break;
+      // }
 
       if (!earliest_match.syntax ||
           earliest_match.matches[0].start > match.matches[0].start) {
@@ -222,8 +145,8 @@ static TxState match_first_pattern(char_u *buffer_start, char_u *buffer_end,
   return earliest_match;
 }
 
-static TxState match_end(char_u *buffer_start, char_u *buffer_end,
-                         TxSyntax *syntax, TxCaptureList capture_list) {
+static TxState match_end(char_u *anchor, char_u *start, char_u *end,
+                         TxSyntax *syntax) {
   TxState match;
   txs_init_state(&match);
 
@@ -231,155 +154,78 @@ static TxState match_end(char_u *buffer_start, char_u *buffer_end,
     return match;
   }
 
-  if (find_match(buffer_start, buffer_end, syntax->rx_end, &match)) {
-    TxNode *self = syntax->self;
-    TxNode *parent = self->parent;
+  if (find_match(anchor, start, end, syntax->rx_end, syntax->rxs_end, &match)) {
     match.syntax = syntax;
   }
 
   return match;
 }
 
-static void match_captures(char_u *buffer_start, char_u *buffer_end,
-                           TxState *state, TxSyntaxNode *captures,
-                           TxCaptureList target_capture,
-                           TxCaptureList source_capture,
-                           TxProcessor *processor) {
-  TxMatchRange *matches = state->matches;
-
-  // char key[64];
-  for (int j = 0; j < state->count; j++) {
-    int capture_idx = j;
-    TxCapture *capture = &target_capture[capture_idx];
-
-    capture->buffer = buffer_start;
-    capture->start = matches[j].start;
-    capture->end = matches[j].end;
-    capture->scope = NULL;
-    capture->name[0] = NULL;
-    capture->expanded[0] = NULL;
-
-    // sprintf(key, "%d", capture_idx);
-
-    TxSyntax *syntax = NULL;
-
-    if (j == 0) {
-      syntax = state->syntax;
-    } else {
-      TxSyntaxNode *node =
-          captures ? txn_syntax_value(captures)->capture_refs[capture_idx]
-                   : NULL;
-      syntax = node ? txn_syntax_value_proxy(node) : NULL;
+void collect_captures(char_u* anchor, TxState *state, TxSyntaxNode *captures) {
+  if (!captures) {
+    for(int i=0; i<state->size; i++) {
+      TxMatchRange *m = &state->matches[i];
+      printf("\t>> (%d %d) ", m->start, m->end);
+      printf(dump_range(anchor, m->start, m->end));
+      printf("\n");
     }
+    return;
+  }
 
-    if (!syntax)
-      continue;
+  // dump(captures, 0);
 
-    char_u *name = syntax->name;
+  char_u *capture_keys[] = {"1", "2", "3", "4", "5",
+                        "6", "7", "8", "9", 0};
+  for (int j = 0; j < TS_MAX_MATCHES; j++) {
+    char_u *capture_key = capture_keys[j];
+    if (!capture_key)
+      break;
 
-    int len = matches[j].end - matches[j].start;
-    char_u *start = buffer_start + matches[j].start;
+    TxMatchRange *m = &state->matches[j+1];
 
-    if (name) {
-      bool matched = true;
-      if (syntax->rx_match) {
-        matched = find_match(start, start + len, syntax->rx_match, NULL);
-      }
-      if (matched) {
-        capture->scope = name;
-        strcpy(capture->expanded, name);
+    TxNode* n = txn_get(captures, capture_key);
+    if (n) {
+      TxNode *scope = txn_get(n, "name");
+      if (scope) {
+        printf(":: %d %s [", j, scope->string_value);
+        printf(dump_range(anchor, m->start, m->end));
+        printf("]\n");
       }
     }
   }
-
-  expand_captures(state, target_capture, source_capture, processor);
 }
 
-bool tx_rebuild_end_pattern(char_u *pattern, char_u *target,
-                            TxCaptureList capture_list) {
-
-  char_u new_pattern[TS_SCOPE_NAME_LENGTH] = "";
-  strncpy(new_pattern, pattern, TS_SCOPE_NAME_LENGTH);
-  bool dynamic = false;
-
-#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-
-  char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
-                            "\\6", "\\7", "\\8", "\\9", 0};
-
-  char_u trailer[TS_SCOPE_NAME_LENGTH];
-
-  for (int j = 0; j < TS_MAX_CAPTURES; j++) {
-    char_u *pos;
-    if (pos = strstr(new_pattern, capture_keys[j])) {
-      strcpy(trailer, pos + strlen(capture_keys[j]));
-      char_u replace[TS_SCOPE_NAME_LENGTH] = "[a-zA-Z]*";
-
-      dynamic = true;
-
-      if (capture_list) {
-        int capture_idx = j;
-        int len =
-            capture_list[capture_idx].end - capture_list[capture_idx].start;
-        if (len >= TS_SCOPE_NAME_LENGTH) {
-          len = TS_SCOPE_NAME_LENGTH;
-        }
-        if (len != 0) {
-          memcpy(replace,
-                 capture_list[capture_idx].buffer +
-                     capture_list[capture_idx].start,
-                 len * sizeof(char_u));
-          replace[len] = 0;
-        }
-      }
-
-      sprintf(pos, "%s%s", replace, trailer);
-    }
-  }
-#endif
-  strncpy(target, new_pattern, TS_SCOPE_NAME_LENGTH);
-  return dynamic;
-}
-
-void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
-                   TxStateStack *stack, TxProcessor *processor) {
+void tx_parse_line(char_u *buffer_start, char_u *buffer_end, TxStateStack *stack) {
   char_u *start = buffer_start;
   char_u *end = buffer_end;
+  char_u *anchor = buffer_start;
 
-  if (processor && processor->line_start) {
-    processor->line_start(processor, stack, buffer_start,
-                          buffer_end - buffer_start);
-  }
-
-  while (true) {
+  while(true) {
     TxState *top = txs_top(stack);
     TxSyntax *syntax = top->syntax;
-
-#if 0
-    TxNode *self = syntax->self;
-    TxNode *parent = self->parent;
-    TxNode *grand_parent = parent ? parent->parent : NULL;
-    // printf(">> %d\n", start - buffer_start);
-    printf("# %d %x %s.%s.%s %d/%d #\n", stack->size, syntax,
-           grand_parent ? grand_parent->name : NULL,
-           parent ? parent->name : NULL, self->name, self->index, parent->size);
-#endif
-
-    // todo .. current sytnax dictates region to scan (not the entire line)
-    end = buffer_end;
 
     TxState pattern_match;
     txs_init_state(&pattern_match);
     TxState end_match;
     txs_init_state(&end_match);
 
+    printf("stack: %d offset: %d\n", stack->size, start - buffer_start);
+    end = buffer_end;
+
     if (syntax->patterns) {
-      pattern_match = match_first_pattern(start, end, syntax->patterns, 0);
-      pattern_match.offset = start - buffer_start;
+      pattern_match = match_first_pattern(anchor, start, end, syntax->patterns);
+      // pattern_match.offset = start - buffer_start;
+
+      if (pattern_match.syntax) {
+        printf("+ %d %d ", pattern_match.matches[0].start, pattern_match.matches[0].end);
+        printf(dump_range(anchor, pattern_match.matches[0].start, pattern_match.matches[0].end));
+        printf(" <<<<< \n");
+        dump_syntax(pattern_match.syntax);
+      }
     }
 
     if (syntax->rx_end) {
-      end_match = match_end(start, end, syntax, top->matches);
+      end_match = match_end(anchor, start, end, syntax);
       end_match.offset = start - buffer_start;
     }
 
@@ -388,78 +234,51 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
          pattern_match.matches[0].start >= end_match.matches[0].start)) {
       pattern_match = end_match;
 
-      // process captures
-      if (pattern_match.syntax->captures) {
-        match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->captures, pattern_match.matches,
-                       txs_top(stack)->matches, NULL);
-      }
-      if (pattern_match.syntax->end_captures) {
-        match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->end_captures,
-                       pattern_match.matches, pattern_match.matches, processor);
-      }
-
-      end = start + pattern_match.matches[0].end;
-      start = start + pattern_match.matches[0].start;
-
-      if (processor && processor->close_tag) {
-        txs_top(stack)->matches[0].end =
-            pattern_match.offset + pattern_match.matches[0].end;
-        processor->close_tag(processor, stack);
-      }
+      end = buffer_start + pattern_match.matches[0].end;
+      start = buffer_start + pattern_match.matches[0].start;
 
       txs_pop(stack);
 
+      if (pattern_match.syntax->end_captures) {
+        printf("end captures:\n");
+        collect_captures(anchor, &pattern_match, pattern_match.syntax->end_captures);
+      }
+      dump_syntax(pattern_match.syntax);
+      printf("}}}}\n");
     } else {
-
-      // exit loop if no match has been found
-      if (!pattern_match.count) {
+      if (!pattern_match.syntax) {
         break;
       }
 
+      // pattern_match.offset = start - buffer_start;
+      end = buffer_start + pattern_match.matches[0].end;
+      start = buffer_start + pattern_match.matches[0].start;
+
       if (pattern_match.syntax->rx_begin) {
-        if (pattern_match.syntax->captures) {
-          match_captures(start, end, &pattern_match,
-                         pattern_match.syntax->captures, pattern_match.matches,
-                         pattern_match.matches, processor);
-
-          // todo... syntax node must be set a load time... dynamic data should
-          // all be at TxState
-          // tx_rebuild_end_pattern(pattern_match.syntax,
-          //                     pattern_match.syntax->end_pattern,
-          //                     pattern_match.matches);
-        }
-
         txs_push(stack, &pattern_match);
-        if (processor && processor->open_tag) {
-          strcpy(txs_top(stack)->matches[0].expanded,
-                 pattern_match.matches[0].expanded);
-          processor->open_tag(processor, stack);
-        }
 
-        end = start + pattern_match.matches[0].end;
-        start = start + pattern_match.matches[0].start;
+        printf("{{{{\n");
+        printf(dump_range(anchor, pattern_match.matches[0].start, pattern_match.matches[0].end));
+        printf("\n");
+        dump_syntax(pattern_match.syntax);
+
+        if (pattern_match.syntax->begin_captures) {
+          printf("begin captures:\n");
+          collect_captures(anchor, &pattern_match, pattern_match.syntax->begin_captures);
+        }
 
       } else if (pattern_match.syntax->rx_match) {
-        match_captures(start, end, &pattern_match,
-                       pattern_match.syntax->captures, pattern_match.matches,
-                       pattern_match.matches, processor);
+        // process captures
 
-        end = start + pattern_match.matches[0].end;
-        start = start + pattern_match.matches[0].start;
+        if (pattern_match.syntax->captures) {
+          printf("captures:\n");
+          collect_captures(anchor, &pattern_match, pattern_match.syntax->captures);
+        }
+
+      } else {
       }
     }
 
     start = end;
-  }
-
-  if (processor && processor->line_end) {
-    processor->line_end(processor, stack);
-  }
-
-  if (stack->size >= TS_MAX_STACK_DEPTH) {
-    stack->size = 1;
-    // oops moment -- todo.. reduce
   }
 }

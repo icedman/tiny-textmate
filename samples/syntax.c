@@ -25,15 +25,6 @@ int main(int argc, char **argv) {
   TX_TIMER_END
   printf("grammar loaded at %fsecs\n", _cpu_time_used);
 
-  TxStateStack stack;
-  TxState state;
-  txs_init_stack(&stack);
-  txs_init_state(&state);
-  state.syntax = txn_syntax_value(root);
-  txs_push(&stack, &state);
-
-  // dump(root, 0);
-
   tx_shutdown();
   tx_stats();
 

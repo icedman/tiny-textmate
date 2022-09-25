@@ -5,6 +5,7 @@ project('text-edit', 'c', 'cpp',
 
 textmate_files = [
   'textmate.c',
+  'processor.c',
   'parser.c',
   'theme.c',
   'package.c',
@@ -93,11 +94,11 @@ executable('sample_regex',
   dependencies: [ onigmo_dep ]
 )
 
-executable('tests',
-  'tests/tests.c',
-  munit_files,
-  cjson_files,
-  textmate_files,
-  include_directories: [ munit_inc, cjson_inc, textmate_inc ],
-  dependencies: [ onigmo_dep ]
-)
+# executable('tests',
+#   'tests/tests.c',
+#   munit_files,
+#   cjson_files,
+#   textmate_files,
+#   include_directories: [ munit_inc, cjson_inc, textmate_inc ],
+#   dependencies: [ onigmo_dep ]
+# )

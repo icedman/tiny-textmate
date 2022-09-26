@@ -24,20 +24,20 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
 
   TxSyntaxNode *syntax_node = tx_syntax_from_scope("source.c");
 
-  TxSyntax* syntax = txn_syntax_value(syntax_node);
+  TxSyntax *syntax = txn_syntax_value(syntax_node);
   munit_assert_not_null(syntax);
   munit_assert_not_null(syntax->patterns);
-  munit_assert_size(((TxNode*)(syntax->patterns))->size, >, 0);
+  munit_assert_size(((TxNode *)(syntax->patterns))->size, >, 0);
   munit_assert_not_null(syntax->repository);
-  munit_assert_size(((TxNode*)(syntax->repository))->size, >, 0);
+  munit_assert_size(((TxNode *)(syntax->repository))->size, >, 0);
 
   {
-    TxStateStack stack;
-    TxState state;
-    txs_init_stack(&stack);
-    txs_init_state(&state);
+    TxParserState stack;
+    TxMatch state;
+    tx_init_parser_state(&stack, NULL);
+    tx_init_match(&state);
     state.syntax = syntax;
-    txs_push(&stack, &state);
+    tx_state_push(&stack, &state);
 
     const char *line = "int main(int argc, char **argv)";
     // int
@@ -45,24 +45,12 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
     // storage.type
 
     // main
-    // entity.name.function.c meta.function.definition.paramters.c meta.function.c source.c
-    // entity.name.function
+    // entity.name.function.c meta.function.definition.paramters.c
+    // meta.function.c source.c entity.name.function
 
     // argc
-    // variable.parameter.probably.c entity.name.function.c meta.function.definition.paramters.c meta.function.c source.c
-    // variable
-
-    TxProcessor processor;
-    txp_line_processor(&processor);
-    tx_parse_line(line, line + strlen(line) + 1, &stack, &processor);
-
-    for(int i=0; i<processor.state_stack.size; i++) {
-      TxState *state = &processor.state_stack.states[i];
-      printf("state: %d\n", i);
-      for(int j=0; j<state->count; j++) {
-        printf(">%s %s [%s]\n", state->matches[0].scope, state->matches[j].expanded, state->matches[0].name);
-      }
-    }
+    // variable.parameter.probably.c entity.name.function.c
+    // meta.function.definition.paramters.c meta.function.c source.c variable
   }
 
   return MUNIT_OK;
@@ -85,8 +73,7 @@ static MunitResult test_packages(const MunitParameter params[], void *data) {
   return MUNIT_OK;
 }
 
-static void *test_setup(const MunitParameter params[],
-                                void *user_data) {
+static void *test_setup(const MunitParameter params[], void *user_data) {
   (void)params;
   tx_initialize();
   munit_assert_string_equal(user_data, "µnit");
@@ -99,10 +86,10 @@ static void test_tear_down(void *fixture) {
 }
 
 static MunitTest test_suite_tests[] = {
-    {(char *)"/tests/packages", test_packages, test_setup,
-     test_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char *)"/tests/syntax", test_syntax, test_setup,
-     test_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"/tests/packages", test_packages, test_setup, test_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"/tests/syntax", test_syntax, test_setup, test_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
 static const MunitSuite test_suite = {(char *)"", test_suite_tests, NULL,

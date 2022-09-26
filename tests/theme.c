@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   TX_TIMER_BEGIN
 
-  char *default_path = "./tests/dracula.json";
+  char *default_path = "./samples/dracula.json";
   char *path = default_path;
 
   if (argc > 1) {

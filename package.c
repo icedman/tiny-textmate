@@ -144,3 +144,20 @@ void tx_read_package_dir(char *path) {
     closedir(dp);
   }
 }
+
+TxThemeNode *tx_theme_from_name(char_u *name) {
+  TxThemeNode *res = NULL;
+
+  // check packages
+  TxNode *packages = tx_global_packages();
+  TxNode *child = packages->first_child;
+  while (child) {
+    TxPackage *pk = txn_package_value(child);
+    TxNode *themes = pk->themes;
+    if (themes) {
+    }
+    child = child->next_sibling;
+  }
+
+  return res;
+}

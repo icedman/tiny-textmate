@@ -57,8 +57,12 @@ int main(int argc, char **argv) {
 
   TX_TIMER_RESET
 
-  TxStateStack stack;
-  txs_init_stack(&stack, txn_syntax_value(root));
+  TxParserState stack;
+  tx_init_parser_state(&stack, txn_syntax_value(root));
+
+  TxParseProcessor processor;
+  tx_init_processor(&processor);
+
   // dump(root, 0);
 
   char temp[1024];
@@ -69,7 +73,7 @@ int main(int argc, char **argv) {
 
     int len = strlen(temp);
     printf("%s", temp);
-    tx_parse_line(temp, temp + len + 1, &stack);
+    tx_parse_line(temp, temp + len + 1, &stack, &processor);
   }
   fclose(fp);
 

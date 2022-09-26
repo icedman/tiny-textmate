@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
-  TxSyntaxNode *root = txn_load_syntax("./tests/c.json");
+  TxSyntaxNode *root = txn_load_syntax("./samples/c.json");
 
   TX_TIMER_END
 

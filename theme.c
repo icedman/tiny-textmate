@@ -1,7 +1,7 @@
 #include "textmate.h"
 #include <ctype.h>
 
-bool txt_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
+bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   memset(style, 0, sizeof(TxStyleSpan));
 
   bool found = false;

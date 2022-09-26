@@ -238,9 +238,7 @@ static void destroy_syntax(TxNode *node) {
   TxSyntaxNode *syntax_node = (TxSyntaxNode *)node;
   TxSyntax *syntax = txn_syntax_value(syntax_node);
 
-  regex_t **regexes[] = {&syntax->rx_match,
-                         &syntax->rx_begin,
-                         &syntax->rx_end,
+  regex_t **regexes[] = {&syntax->rx_match, &syntax->rx_begin, &syntax->rx_end,
                          -1};
 
   for (int i = 0;; i++) {
@@ -331,32 +329,28 @@ TxNode *tx_global_packages() {
   return global_packages;
 }
 
-void txs_init_state(TxState *state)
-{
-  memset(state, 0, sizeof(TxState));
+void tx_init_match(TxMatch *state) { memset(state, 0, sizeof(TxMatch)); }
+
+void tx_init_parser_state(TxParserState *stack, TxSyntax *syntax) {
+  memset(stack, 0, sizeof(TxParserState));
+  if (syntax) {
+    TxMatch state;
+    tx_init_match(&state);
+    state.syntax = syntax;
+    tx_state_push(stack, &state);
+  }
 }
 
-void txs_init_stack(TxStateStack *stack, TxSyntax *syntax)
-{
-    memset(stack, 0, sizeof(TxStateStack));
-    if (syntax) {
-      TxState state;
-      txs_init_state(&state);
-      state.syntax = syntax;
-      txs_push(stack, &state);
-    }
-}
-
-void txs_push(TxStateStack *stack, TxState *state) {
+void tx_state_push(TxParserState *stack, TxMatch *state) {
   // replace last on the stack
-  if (stack->size >= TS_MAX_STACK_DEPTH - 1) {
+  if (stack->size >= TX_MAX_STACK_DEPTH - 1) {
     stack->size--;
   }
-  memcpy(&stack->states[stack->size], state, sizeof(TxState));
+  memcpy(&stack->states[stack->size], state, sizeof(TxMatch));
   stack->size++;
 }
 
-void txs_pop(TxStateStack *stack) {
+void tx_state_pop(TxParserState *stack) {
   if (stack->size > 0) {
     stack->size--;
   } else {
@@ -364,7 +358,7 @@ void txs_pop(TxStateStack *stack) {
   }
 }
 
-TxState *txs_top(TxStateStack *stack) {
+TxMatch *tx_state_top(TxParserState *stack) {
   if (stack->size == 0) {
     return NULL;
   }

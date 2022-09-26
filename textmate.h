@@ -5,13 +5,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define TX_SYNTAX_VERBOSE_REGEX
+// #define TX_SYNTAX_VERBOSE_REGEX
 // #define TX_SYNTAX_RECOMPILE_REGEX_END
 
-#define TS_MAX_STACK_DEPTH 32
-#define TS_MAX_PATTERN_DEPTH 16
-#define TS_MAX_MATCHES 9
-#define TS_SCOPE_NAME_LENGTH 128
+#define TX_MAX_STACK_DEPTH 32
+#define TX_MAX_PATTERN_DEPTH 16
+#define TX_MAX_MATCHES 9
+#define TX_SCOPE_NAME_LENGTH 128
 
 #ifndef char_u
 typedef uint8_t char_u;
@@ -75,7 +75,7 @@ typedef struct _TxSyntax {
   char_u *name;
   char_u *content_name;
   char_u *scope_name;
-  
+
   bool include_external;
 
   regex_t *rx_match;
@@ -108,7 +108,6 @@ typedef struct {
 typedef struct {
   struct TxNode *self;
   struct TxNode *token_colors;
-  int32_t id;
 } TxTheme;
 
 typedef struct {
@@ -127,29 +126,32 @@ typedef struct {
 } TxStyleSpan;
 
 typedef struct {
-  char_u *anchor;
   char_u *buffer;
   size_t start;
   size_t end;
+  char_u scope[TX_SCOPE_NAME_LENGTH];
 } TxMatchRange;
 
 typedef struct {
   TxSyntax *syntax;
   size_t size;
-  size_t offset;
-  TxMatchRange matches[TS_MAX_MATCHES];
-} TxState;
+  TxMatchRange matches[TX_MAX_MATCHES];
+} TxMatch;
 
 typedef struct {
   size_t size;
-  TxState states[TS_MAX_STACK_DEPTH];
-} TxStateStack;
+  TxMatch states[TX_MAX_STACK_DEPTH];
+} TxParserState;
 
-void txs_init_state(TxState *state);
-void txs_init_stack(TxStateStack *state, TxSyntax *syntax);
-void txs_push(TxStateStack *stack, TxState *state);
-void txs_pop(TxStateStack *stack);
-TxState *txs_top(TxStateStack *stack);
+typedef struct {
+  TxParserState parser_state;
+  void (*line_start)(struct TxParseProcessor *self, char_u *buffer_start,
+                     char_u *buffer_end);
+  void (*line_end)(struct TxParseProcessor *self);
+  void (*open_tag)(struct TxParseProcessor *self, TxMatch *state);
+  void (*close_tag)(struct TxParseProcessor *self, TxMatch *state);
+  void (*capture)(struct TxParseProcessor *self, TxMatch *state);
+} TxParseProcessor;
 
 TxNode *txn_new(char_u *name, TxValueType type);
 TxNode *txn_new_number(int32_t number);
@@ -185,12 +187,19 @@ TxPackage *txn_package_value(TxPackageNode *pkn);
 TxThemeNode *txn_new_theme();
 TxThemeNode *txn_load_theme(char_u *path);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
-bool txt_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style);
-
-void tx_parse_line(char_u *buffer_start, char_u *buffer_end, TxStateStack *stack);
 
 void tx_initialize();
 void tx_shutdown();
+
+void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
+                   TxParserState *stack, TxParseProcessor *processor);
+
+void tx_init_match(TxMatch *match);
+void tx_init_processor(TxParseProcessor *processor);
+void tx_init_parser_state(TxParserState *stack, TxSyntax *syntax);
+void tx_state_push(TxParserState *stack, TxMatch *match);
+void tx_state_pop(TxParserState *stack);
+TxMatch *tx_state_top(TxParserState *stack);
 
 TxSyntaxNode *tx_global_repository();
 TxNode *tx_global_packages();
@@ -198,6 +207,8 @@ void tx_read_package_dir(char *path);
 
 TxSyntaxNode *tx_syntax_from_path(char_u *path);
 TxSyntaxNode *tx_syntax_from_scope(char_u *scope);
+TxThemeNode *tx_theme_from_name(char_u *name);
+bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style);
 
 regex_t *tx_compile_pattern(char_u *pattern);
 

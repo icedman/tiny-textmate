@@ -1,6 +1,6 @@
 #include "onigmognu.h"
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 regex_t *compile_pattern(char *pattern) {
   regex_t *regex;
@@ -13,7 +13,6 @@ regex_t *compile_pattern(char *pattern) {
   }
   return regex;
 }
-
 
 static bool find_match(char *buffer_start, char *buffer_end, regex_t *regex) {
   bool found = false;
@@ -35,7 +34,11 @@ static bool find_match(char *buffer_start, char *buffer_end, regex_t *regex) {
   r = onig_search(regex, str, end, start, range, region, onig_options);
   if (r != ONIG_MISMATCH) {
     for (int i = 0; i < region->num_regs; i++) {
-      printf("%d %d\n", region->beg[i], region->end[i]);
+      char temp[1024];
+      int len = (region->end[i] - region->beg[i]);
+      memcpy(temp, buffer_start + region->beg[i], len * sizeof(char));
+      temp[len] = 0;
+      printf("%d %d %s\n", region->beg[i], region->end[i], temp);
     }
     found = true;
   }
@@ -45,8 +48,7 @@ static bool find_match(char *buffer_start, char *buffer_end, regex_t *regex) {
   return found;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   OnigEncoding use_encs[1];
   use_encs[0] = ONIG_ENCODING_ASCII;
   onig_initialize(use_encs, sizeof(use_encs) / sizeof(use_encs[0]));
@@ -55,9 +57,12 @@ int main(int argc, char **argv)
   // regex_t* rx = compile_pattern("(lazy)\\s(quick)");
 
   {
-    char temp[] = "   /* Don't re-focus an already focused surface. */";
+    char temp[] = "int argc, char **argv) {";
     printf("%s\n", temp);
-    regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
+    // regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
+    regex_t *rx = compile_pattern(
+        "(?<=(?:[a-zA-Z_0-9] "
+        "|[&*>\\]\\)]))\\s*([a-zA-Z_]\\w*)\\s*(?=(?:\\[\\]\\s*)?(?:,|\\)))");
     find_match(temp, temp + strlen(temp), rx);
     onig_free(rx);
   }

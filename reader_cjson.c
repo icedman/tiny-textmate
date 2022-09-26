@@ -88,7 +88,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
                                       "\\6",  "\\7",  "\\8", "\\9",  "\\10",
                                       "\\11", "\\12", "\13", "\\14", "\\15",
                                       "\\16", 0};
-            for (int j = 0; j < TS_MAX_MATCHES; j++) {
+            for (int j = 0; j < TX_MAX_MATCHES; j++) {
               if (strstr(item->valuestring, capture_keys[j])) {
                 TxNode *ns = txn_new_string(item->valuestring);
                 txn_set(node, "end_pattern", ns);
@@ -135,8 +135,8 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   // captures
   {
     char_u *keys[] = {"captures", "beginCaptures", "endCaptures", 0};
-    TxSyntaxNode **capture_nodes[] = {&syntax->captures, &syntax->begin_captures,
-                           &syntax->end_captures};
+    TxSyntaxNode **capture_nodes[] = {
+        &syntax->captures, &syntax->begin_captures, &syntax->end_captures};
     for (int i = 0;; i++) {
       char_u *key = keys[i];
       if (!key)
@@ -150,7 +150,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
         char_u *capture_keys[] = {"1", "2", "3", "4", "5",
                                   "6", "7", "8", "9", 0};
-        for (int j = 0; j < TS_MAX_MATCHES; j++) {
+        for (int j = 0; j < TX_MAX_MATCHES; j++) {
           char_u *capture_key = capture_keys[j];
           if (!capture_key)
             break;

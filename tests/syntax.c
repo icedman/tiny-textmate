@@ -11,14 +11,14 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
-  char *default_path = "./tests/c.json";
+  char *default_path = "./samples/c.json";
   char *path = default_path;
 
   if (argc > 1) {
     path = argv[1];
   }
 
-  TxNode* global_repository = tx_global_repository();
+  TxNode *global_repository = tx_global_repository();
   TxSyntaxNode *root = txn_load_syntax(path);
   txn_set(global_repository, "source.c", root);
 
@@ -28,8 +28,8 @@ int main(int argc, char **argv) {
   tx_shutdown();
   tx_stats();
 
-  printf("sizeof TxState %ld\n", sizeof(TxState));
-  printf("sizeof TxStateStack %ld\n", sizeof(TxStateStack));
+  printf("sizeof TxState %ld\n", sizeof(TxMatch));
+  printf("sizeof TxParserState %ld\n", sizeof(TxParserState));
 
   return 0;
 }

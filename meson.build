@@ -96,6 +96,7 @@ executable('sample_regex',
 
 executable('tests',
   'tests/tests.c',
+  'tests/dump.c',
   munit_files,
   cjson_files,
   textmate_files,

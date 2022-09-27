@@ -9,7 +9,7 @@ void dump(TxNode *n, int level);
 int test_single_package(int argc, char **argv) {
   TX_TIMER_BEGIN
 
-  char *default_path = "./tests/cpp.package.json";
+  char *default_path = "./samples/cpp.package.json";
   char *path = default_path;
 
   if (argc > 1) {
@@ -39,7 +39,8 @@ int test_packages(int argc, char **argv) {
 
   // todo leak
   tx_read_package_dir(path);
-  tx_syntax_from_path("/x/Makefile");
+  dump(tx_global_packages(), 0);
+  // tx_syntax_from_path("/x/Makefile");
   // tx_syntax_from_path("/x/test.xc");
   // tx_syntax_from_path("/x/test.c");
   // tx_syntax_from_scope("source.c");
@@ -53,8 +54,8 @@ int test_packages(int argc, char **argv) {
 int main(int argc, char **argv) {
   tx_initialize();
 
-  test_single_package(argc, argv);
-  // test_packages(argc, argv);
+  // test_single_package(argc, argv);
+  test_packages(argc, argv);
 
   tx_shutdown();
   tx_stats();

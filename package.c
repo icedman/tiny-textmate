@@ -65,7 +65,7 @@ lang_found:
   if (language) {
     TxNode *scope = txn_get(language, "scopeName");
     if (scope) {
-      // printf("found %s\n", scope->string_value);
+      printf("found %s\n", scope->string_value);
       return tx_syntax_from_scope(scope->string_value);
     }
   }

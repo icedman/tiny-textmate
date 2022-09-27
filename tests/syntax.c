@@ -22,6 +22,8 @@ int main(int argc, char **argv) {
   TxSyntaxNode *root = txn_load_syntax(path);
   txn_set(global_repository, "source.c", root);
 
+  dump(root, 0);
+
   TX_TIMER_END
   printf("grammar loaded at %fsecs\n", _cpu_time_used);
 

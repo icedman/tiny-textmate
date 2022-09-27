@@ -5,11 +5,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// #define TX_SYNTAX_VERBOSE_REGEX
-// #define TX_SYNTAX_RECOMPILE_REGEX_END
+#define TX_COLORIZE
+#define TX_SYNTAX_VERBOSE_REGEX
+#define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TX_MAX_STACK_DEPTH 32
-#define TX_MAX_PATTERN_DEPTH 16
 #define TX_MAX_MATCHES 9
 #define TX_SCOPE_NAME_LENGTH 128
 
@@ -34,9 +34,10 @@ typedef enum {
 
 typedef enum {
   TxObjectNull,
+  TxObjectSyntax,
   TxObjectPackage,
   TxObjectTheme,
-  TxObjectSyntax,
+  TxObjectFontStyle,
 } TxObjectType;
 
 typedef struct _TxNode {
@@ -77,6 +78,7 @@ typedef struct _TxSyntax {
   char_u *scope_name;
 
   bool include_external;
+  char_u *include_scope;
 
   regex_t *rx_match;
   regex_t *rx_begin;
@@ -85,6 +87,7 @@ typedef struct _TxSyntax {
   char_u *rxs_match;
   char_u *rxs_begin;
   char_u *rxs_end;
+  bool rx_end_dynamic;
 
 } TxSyntax;
 
@@ -104,6 +107,20 @@ typedef struct {
   TxNode self;
   TxPackage package;
 } TxPackageNode;
+
+typedef struct {
+  struct TxNode *self;
+  uint32_t fg;
+  uint32_t bg;
+  bool italic;
+  bool bold;
+  bool underline;
+} TxFontStyle;
+
+typedef struct {
+  TxNode self;
+  TxFontStyle style;
+} TxFontStyleNode;
 
 typedef struct {
   struct TxNode *self;
@@ -199,6 +216,8 @@ TxPackage *txn_package_value(TxPackageNode *pkn);
 TxThemeNode *txn_new_theme();
 TxThemeNode *txn_load_theme(char_u *path);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
+TxFontStyleNode *txn_new_font_style();
+TxFontStyle *txn_font_style_value(TxFontStyleNode *pkn);
 
 void tx_initialize();
 void tx_shutdown();
@@ -246,8 +265,21 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #define DIR_SEPARATOR '\\'
 #endif
 
+#ifdef TX_COLORIZE
 #define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
-#define _END_COLOR printf("\x1b[0m");
+#define _BEGIN_BOLD printf("\x1b[1m");
+#define _BEGIN_DIM printf("\x1b[2m");
+#define _BEGIN_UNDERLINE printf("\x1b[4m");
+#define _BEGIN_REVERSE printf("\x1b[7m");
+#define _END_FORMAT printf("\x1b[0m");
+#else
+#define _BEGIN_COLOR(R, G, B)
+#define _BEGIN_BOLD
+#define _BEGIN_DIM
+#define _BEGIN_UNDERLINE
+#define _BEGIN_REVERSE
+#define _END_FORMAT
+#endif
 
 bool txt_parse_color(const char_u *color, uint32_t *result);
 bool txt_color_to_rgb(uint32_t color, uint32_t result[3]);

@@ -91,6 +91,7 @@ do {
 ```
 # TODO
 
-* proper end regex - recompile
-* parser start serialize
+* proper 'end' regex - recompile
+* parser state serialize
+* external scope source
 

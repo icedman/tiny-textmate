@@ -28,6 +28,8 @@ static void post_process_syntax(TxSyntaxNode *n) {
       } else {
         // external?
         syntax->include_external = true;
+        syntax->include_scope =
+            txn_set(n, "include_scope", txn_new_string(path))->string_value;
         // printf("external %s\n", path);
       }
 
@@ -84,22 +86,21 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
           if (strcmp(key, "end") == 0) {
-            char_u *capture_keys[] = {"\\1",  "\\2",  "\\3", "\\4",  "\\5",
-                                      "\\6",  "\\7",  "\\8", "\\9",  "\\10",
-                                      "\\11", "\\12", "\13", "\\14", "\\15",
-                                      "\\16", 0};
+            char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
+                                      "\\6", "\\7", "\\8", "\\9", 0};
             for (int j = 0; j < TX_MAX_MATCHES; j++) {
               if (strstr(item->valuestring, capture_keys[j])) {
                 TxNode *ns = txn_new_string(item->valuestring);
-                txn_set(node, "end_pattern", ns);
-                txn_syntax_value(node)->end_pattern = ns->string_value;
+                syntax->rx_end_dynamic = true;
+                syntax->rxs_end = ns->string_value;
                 break;
               }
             }
           }
 #endif
-
-          *regexes[i] = tx_compile_pattern(item->valuestring);
+          if (!syntax->rx_end_dynamic) {
+            *regexes[i] = tx_compile_pattern(item->valuestring);
+          }
         }
         txn_set(node, key, regex_node);
       }
@@ -390,9 +391,12 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
       while (item) {
         // printf("%s:%s\n", item->string, item->valuestring);
         if (item->valuestring) {
-          TxNode *n = txn_set(token_colors, item->string,
-                              txn_new_string(item->valuestring));
-          txt_parse_color(item->valuestring, &n->number_value);
+          TxFontStyleNode *fs = txn_new_font_style();
+          TxFontStyle *fsv = txn_font_style_value(fs);
+          txn_set(token_colors, item->string, fs);
+          txt_parse_color(item->valuestring, &fsv->fg);
+          txn_set(fs, "foreground", txn_new_string(item->valuestring));
+          fs->self.number_value = fsv->fg;
         }
         item = item->next;
       }
@@ -408,25 +412,59 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
         cJSON *scope = cJSON_GetObjectItem(token_item, "scope");
         cJSON *settings = cJSON_GetObjectItem(token_item, "settings");
         cJSON *fg = NULL;
+        cJSON *bg = NULL;
+        cJSON *fontStyle = NULL;
 
         if (!settings)
           continue;
+
+        // todo... should allow styles without foreground color (ie. italic
+        // only)
         fg = cJSON_GetObjectItem(settings, "foreground");
-        if (!fg)
+        bg = cJSON_GetObjectItem(settings, "background");
+        fontStyle = cJSON_GetObjectItem(settings, "fontStyle");
+
+        if (!fg && !bg && !fontStyle)
           continue;
 
+        size_t scopes = cJSON_GetArraySize(scope);
         if (scope && scope->valuestring) {
-          TxNode *n = txn_set(token_colors, scope->valuestring,
-                              txn_new_string(fg->valuestring));
-          txt_parse_color(fg->valuestring, &n->number_value);
-        } else if (scope) {
-          size_t scopes = cJSON_GetArraySize(scope);
-          for (int j = 0; j < scopes; j++) {
-            cJSON *scope_item = cJSON_GetArrayItem(scope, j);
-            if (scope_item && scope_item->valuestring) {
-              TxNode *n = txn_set(token_colors, scope_item->valuestring,
-                                  txn_new_string(fg->valuestring));
-              txt_parse_color(fg->valuestring, &n->number_value);
+          scopes = 1;
+        }
+
+        for (int j = 0; j < scopes; j++) {
+          cJSON *scope_item = NULL;
+          char_u *scope_name = NULL;
+
+          if (scope->valuestring) {
+            scope_name = scope->valuestring;
+          } else {
+            scope_item = cJSON_GetArrayItem(scope, j);
+            scope_name = scope_item->valuestring;
+          }
+
+          if (scope_name) {
+            // printf("%s\n", scope_name);
+
+            TxFontStyleNode *fs = txn_new_font_style();
+            TxFontStyle *fsv = txn_font_style_value(fs);
+            txn_set(token_colors, scope_name, fs);
+
+            if (fg) {
+              txt_parse_color(fg->valuestring, &fsv->fg);
+              fs->self.number_value = fsv->fg;
+              txn_set(fs, "foreground", txn_new_string(fg->valuestring));
+            }
+            if (bg) {
+              txt_parse_color(bg->valuestring, &fsv->bg);
+              txn_set(fs, "background", txn_new_string(bg->valuestring));
+            }
+            if (fontStyle) {
+              txn_set(fs, "fontStyle", txn_new_string(fontStyle->valuestring));
+              fsv->italic = strstr(fontStyle->valuestring, "italic") != NULL;
+              fsv->bold = strstr(fontStyle->valuestring, "bold") != NULL;
+              fsv->underline =
+                  strstr(fontStyle->valuestring, "underline") != NULL;
             }
           }
         }
@@ -437,6 +475,9 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
 
 // --------------------
 // re-implement these next functions if you want to ditch cjson
+// TxSyntaxNode *txn_load_syntax(char_u *path)
+// TxThemeNode *txn_load_theme(char_u *path)
+// TxPackageNode *txn_load_package(char_u *path)
 // --------------------
 TxSyntaxNode *txn_load_syntax(char_u *path) {
   FILE *fp = fopen(path, "r");
@@ -453,6 +494,12 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   fclose(fp);
 
   cJSON *json = cJSON_Parse(content);
+  if (json == NULL) {
+    const char *error_ptr = cJSON_GetErrorPtr();
+    if (error_ptr != NULL) {
+      printf("Error before: %s\n", error_ptr);
+    }
+  }
 
   TxSyntaxNode *root = txn_new_syntax();
   TxSyntax *syntax = txn_syntax_value(root);
@@ -484,6 +531,12 @@ TxThemeNode *txn_load_theme(char_u *path) {
   fclose(fp);
 
   cJSON *json = cJSON_Parse(content);
+  if (json == NULL) {
+    const char *error_ptr = cJSON_GetErrorPtr();
+    if (error_ptr != NULL) {
+      printf("Error before: %s\n", error_ptr);
+    }
+  }
 
   TxThemeNode *thm = txn_new_theme();
   parse_theme(json, thm, path);
@@ -508,6 +561,12 @@ TxPackageNode *txn_load_package(char_u *path) {
   fclose(fp);
 
   cJSON *json = cJSON_Parse(content);
+  if (json == NULL) {
+    const char *error_ptr = cJSON_GetErrorPtr();
+    if (error_ptr != NULL) {
+      printf("Error before: %s\n", error_ptr);
+    }
+  }
 
   TxPackageNode *pkn = txn_new_package();
   parse_package(json, pkn, path);

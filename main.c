@@ -64,7 +64,8 @@ int main(int argc, char **argv) {
   tx_init_parser_state(&stack, txn_syntax_value(root));
 
   TxParseProcessor processor;
-  tx_init_processor(&processor, _debug ? TxProcessorTypeCollectAndDump : TxProcessorTypeCollectAndRender);
+  tx_init_processor(&processor, _debug ? TxProcessorTypeCollectAndDump
+                                       : TxProcessorTypeCollectAndRender);
   processor.theme = txn_theme_value(theme);
 
   // dump(root, 0);

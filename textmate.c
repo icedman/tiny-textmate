@@ -295,9 +295,23 @@ TxTheme *txn_theme_value(TxThemeNode *node) {
   return node->self.object_type == TxObjectTheme ? &node->theme : NULL;
 }
 
+TxFontStyleNode *txn_new_font_style() {
+  TxFontStyleNode *node = tx_malloc(sizeof(TxFontStyleNode));
+  _nodes_allocated++;
+  memset(node, 0, sizeof(TxFontStyleNode));
+  node->self.type = TxTypeObject;
+  node->self.object_type = TxObjectFontStyle;
+  node->style.self = node;
+  return node;
+}
+
+TxFontStyle *txn_font_style_value(TxFontStyleNode *node) {
+  return node->self.object_type == TxObjectFontStyle ? &node->style : NULL;
+}
+
 void tx_initialize() {
   OnigEncoding use_encs[1];
-  use_encs[0] = ONIG_ENCODING_ASCII;
+  use_encs[0] = ONIG_ENCODING_UTF8;
   onig_initialize(use_encs, sizeof(use_encs) / sizeof(use_encs[0]));
 
   tx_global_repository();

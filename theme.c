@@ -10,7 +10,12 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   while (child) {
     if (child->name) {
       if (strstr(scope, child->name) != NULL) {
-        style->fg = child->number_value;
+        TxFontStyle *fsv = txn_font_style_value(child);
+        style->fg = fsv->fg;
+        style->bg = fsv->bg;
+        style->italic = fsv->italic;
+        style->bold = fsv->bold;
+        style->underline = fsv->underline;
         found = true;
       }
     }

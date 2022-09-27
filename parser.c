@@ -5,6 +5,8 @@
 // #define _DEBUG_COLLECT
 // #define _DEBUG_MATCHES
 
+void dump(TxNode *n, int level);
+
 char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end) {
   static char_u temp[TX_SCOPE_NAME_LENGTH];
   strcpy(temp, "");
@@ -69,7 +71,35 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 
   if (syntax) {
     if (!syntax->include && syntax->include_external) {
+
       syntax->include_external = false;
+
+      if (syntax->include_scope) {
+        char_u ns[TX_SCOPE_NAME_LENGTH] = "";
+        char_u scope[TX_SCOPE_NAME_LENGTH] = "";
+        strcpy(ns, syntax->include_scope);
+        char_u *u = strchr(syntax->include_scope, '#');
+        if (u) {
+          ns[u - syntax->include_scope] = 0;
+          strcpy(scope, u);
+        }
+
+        TxSyntaxNode *target_node = NULL;
+        if (strlen(ns) > 0 && ns[0] != '#') {
+          target_node = tx_syntax_from_scope(ns);
+        }
+
+        // printf("include %s %s %x\n", ns, scope, target_node);
+
+        if (strlen(scope) > 0) {
+          TxNode *root = txn_root(target_node ? target_node : node);
+          TxNode *repo_node = txn_get(root->first_child, "repository");
+          target_node = txn_get(repo_node, (scope + 1));
+          // todo add tests
+        }
+
+        syntax->include = target_node;
+      }
     }
 
     if (syntax->include) {
@@ -97,14 +127,14 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
   unsigned char *start, *range, *end;
   unsigned int onig_options = ONIG_OPTION_NONE;
 
-  int offset = buffer_start - anchor;
+  // int offset = buffer_start - anchor;
   int count = 0;
 
   UChar *str = anchor;
   end = buffer_end;
   start = buffer_start;
   range = end;
-  offset = 0;
+  // offset = 0;
 
   r = onig_search(regex, str, end, start, range, region, onig_options);
   if (r != ONIG_MISMATCH) {
@@ -117,8 +147,8 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
         break;
       }
       state->matches[i].buffer = anchor;
-      state->matches[i].start = region->beg[i] + offset;
-      state->matches[i].end = region->end[i] + offset;
+      state->matches[i].start = region->beg[i]; // + offset;
+      state->matches[i].end = region->end[i];   // + offset;
     }
   }
 
@@ -136,7 +166,7 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
     printf(tx_extract_buffer_range(anchor, state->matches[0].start,
                                    state->matches[0].end));
     printf("\n");
-    _END_COLOR
+    _END_FORMAT
   }
 #endif
 
@@ -158,7 +188,7 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
              find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_match,
                         &match)) {
     match.syntax = syntax;
-  } else if (syntax->rx_end) {
+  } else if (syntax->rx_end || syntax->rx_end_dynamic) {
     // skip
   } else {
     match = match_first_pattern(anchor, start, end, syntax->patterns);
@@ -207,11 +237,20 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
   TxMatch match;
   tx_init_match(&match);
 
-  if (!syntax->rx_end) {
+  regex_t *regex = syntax->rx_end;
+
+  if (syntax->rx_end_dynamic) {
+    regex = NULL;
+
+    printf(">%s\n", syntax->rxs_end);
+    printf("dynamic end - not yet implemented\n");
+    exit(0);
+  }
+  if (!regex) {
     return match;
   }
 
-  if (find_match(anchor, start, end, syntax->rx_end, syntax->rxs_end, &match)) {
+  if (find_match(anchor, start, end, regex, syntax->rxs_end, &match)) {
     match.syntax = syntax;
   }
 
@@ -233,7 +272,7 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   printf(tx_extract_buffer_range(state->matches[0].buffer,
                                  state->matches[0].start,
                                  state->matches[0].end));
-  _END_COLOR
+  _END_FORMAT
   printf(" <<<<< \n");
 #endif
 }
@@ -264,7 +303,7 @@ static void collect_captures(char_u *anchor, TxMatch *state,
         printf(":: %d (%d-%d) %s [", capture_idx, m->start, m->end, temp);
         _BEGIN_COLOR(0, 255, 255)
         printf("%s", tx_extract_buffer_range(anchor, m->start, m->end));
-        _END_COLOR
+        _END_FORMAT
         printf("]\n");
 #endif
       }
@@ -308,7 +347,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       pattern_match = match_first_pattern(anchor, start, end, syntax->patterns);
     }
 
-    if (syntax->rx_end) {
+    if (syntax->rx_end || syntax->rx_end_dynamic) {
       end_match = match_end(anchor, start, end, syntax);
     }
 

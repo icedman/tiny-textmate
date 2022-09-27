@@ -29,6 +29,9 @@ int main(int argc, char **argv) {
     path = argv[argc - 1];
   }
   for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "-d") == 0) {
+      _debug = true;
+    }
     if (strcmp(argv[i - 1], "-t") == 0) {
       theme_path = argv[i];
     }
@@ -61,7 +64,8 @@ int main(int argc, char **argv) {
   tx_init_parser_state(&stack, txn_syntax_value(root));
 
   TxParseProcessor processor;
-  tx_init_processor(&processor);
+  tx_init_processor(&processor, _debug ? TxProcessorTypeCollectAndDump : TxProcessorTypeCollectAndRender);
+  processor.theme = txn_theme_value(theme);
 
   // dump(root, 0);
 
@@ -72,7 +76,7 @@ int main(int argc, char **argv) {
     fgets(temp, 1024, fp);
 
     int len = strlen(temp);
-    printf("%s", temp);
+    // printf("%s", temp);
     tx_parse_line(temp, temp + len + 1, &stack, &processor);
   }
   fclose(fp);

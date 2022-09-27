@@ -89,3 +89,8 @@ do {
 } while(true)
 
 ```
+# TODO
+
+* proper end regex - recompile
+* parser start serialize
+

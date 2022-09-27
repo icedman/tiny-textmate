@@ -1,16 +1,212 @@
 #include "textmate.h"
+#include <string.h>
 
-void line_start(TxParseProcessor *self, char_u *buffer_start,
-                char_u *buffer_end) {}
+//------------------
+// null processor
+//------------------
+static void null_line_start(TxParseProcessor *self, char_u *buffer_start,
+                            char_u *buffer_end) {}
 
-void line_end(TxParseProcessor *self) {}
+static void null_line_end(TxParseProcessor *self) {}
 
-void open_tag(TxParseProcessor *self, TxMatch *state) {}
+static void null_open_tag(TxParseProcessor *self, TxMatch *state) {}
 
-void close_tag(TxParseProcessor *self, TxMatch *state) {}
+static void null_close_tag(TxParseProcessor *self, TxMatch *state) {}
 
-void capture(TxParseProcessor *self, TxMatch *state) {}
+static void null_capture(TxParseProcessor *self, TxMatch *state) {}
 
-void tx_init_processor(TxParseProcessor *processor) {
+//------------------
+// dump processor
+//------------------
+static void dump_line_start(TxParseProcessor *self, char_u *buffer_start,
+                            char_u *buffer_end) {
+  printf("---------------------\n%s\n",
+         tx_extract_buffer_range(buffer_start, 0, buffer_end - buffer_start));
+}
+
+static void dump_line_end(TxParseProcessor *self) {}
+
+static void dump_open_tag(TxParseProcessor *self, TxMatch *state) {
+  _BEGIN_COLOR(255, 255, 0)
+  printf("{{{{ %s", tx_extract_buffer_range(state->matches[0].buffer,
+                                            state->matches[0].start,
+                                            state->matches[0].end));
+  _END_COLOR
+  printf("[%s] (%d-%d)\n", state->matches[0].scope, state->matches[0].start,
+         state->matches[0].end);
+}
+
+static void dump_close_tag(TxParseProcessor *self, TxMatch *state) {
+  _BEGIN_COLOR(255, 255, 0)
+  printf("%s  }}}}", tx_extract_buffer_range(state->matches[0].buffer,
+                                             state->matches[0].start,
+                                             state->matches[0].end));
+  _END_COLOR
+  printf(" [%s] (%d-%d)\n", state->matches[0].scope, state->matches[0].start,
+         state->matches[0].end);
+}
+
+static void dump_capture(TxParseProcessor *self, TxMatch *state) {
+  for (int i = 0; i < state->size; i++) {
+    if (!state->matches[i].scope[0])
+      continue;
+    _BEGIN_COLOR(0, 255, 255)
+    printf(tx_extract_buffer_range(state->matches[i].buffer,
+                                   state->matches[i].start,
+                                   state->matches[i].end));
+    _END_COLOR
+    printf(" :: [%s] %d (%d-%d)\n", state->matches[i].scope, i,
+           state->matches[i].start, state->matches[i].end);
+  }
+}
+
+//------------------
+// collect processor
+//------------------
+static void collect_line_start(TxParseProcessor *self, char_u *buffer_start,
+                               char_u *buffer_end) {
+  self->buffer_start = buffer_start;
+  self->buffer_end = buffer_end;
+  tx_init_parser_state(&self->line_parser_state, NULL);
+
+  // prior lines states is copied to stack and range is set to span the entire line
+  for(int i=0; i<self->parser_state->size; i++) {
+    TxMatch *match = &self->parser_state->states[i];
+    tx_state_push(&self->line_parser_state, match);
+    self->line_parser_state.states[i].matches[0].start = 0;
+    self->line_parser_state.states[i].matches[0].end = buffer_end - buffer_start;
+  }
+}
+
+static void collect_open_tag(TxParseProcessor *self, TxMatch *state) {
+  tx_state_push(&self->line_parser_state, state);
+  // at open_tag - the range is set to span until end of line - unless corrected by a close tag
+  tx_state_top(&self->line_parser_state)->matches[0].end = self->buffer_end - self->buffer_start;
+}
+
+static void collect_close_tag(TxParseProcessor *self, TxMatch *state) {
+  TxParserState *line_parser_state = &self->line_parser_state;
+  for (int j = line_parser_state->size; j > 0; j--) {
+    TxMatch *m = &line_parser_state->states[j - 1];
+    if (m->syntax == state->syntax) {
+      m->matches[0].end = state->matches[0].end;
+    }
+  }
+}
+
+static void collect_capture(TxParseProcessor *self, TxMatch *state) {
+  tx_state_push(&self->line_parser_state, state);
+}
+
+static void collect_dump_line_end(TxParseProcessor *self) {
+  TxParserState *line_parser_state = &self->line_parser_state;
+
+  // todo extend unclosed tags
+  
+  for (int j = 0; j < line_parser_state->size; j++) {
+    TxMatch *state = &line_parser_state->states[j];
+    for (int i = 0; i < state->size; i++) {
+      if (!state->matches[i].scope[0])
+        continue;
+      _BEGIN_COLOR(0, 255, 255)
+      // printf(tx_extract_buffer_range(state->matches[i].buffer,
+      //                                state->matches[i].start,
+      //                                state->matches[i].end));
+      _END_COLOR
+      printf(" :: [%s] %d (%d-%d)\n", state->matches[i].scope, i,
+             state->matches[i].start, state->matches[i].end);
+    }
+  }
+}
+
+static void collect_render_line_end(TxParseProcessor *self) {
+  TxParserState *line_parser_state = &self->line_parser_state;
+
+  uint32_t fg[] = {200, 200, 200};
+  if (self->theme) {
+    TxStyleSpan style;
+    if (tx_style_from_scope("foreground", self->theme, &style)) {
+      txt_color_to_rgb(style.fg, fg);
+    }
+  }
+
+  char_u *c = self->buffer_start;
+  int idx = 0;
+  TxStyleSpan style;
+  while (c < self->buffer_end) {
+    _BEGIN_COLOR(fg[0], fg[1], fg[2])
+
+    TxMatchRange *match_range = NULL;
+    for (int j = 0; j < line_parser_state->size; j++) {
+      TxMatch *state = &line_parser_state->states[j];
+      for (int i = 0; i < state->size; i++) {
+        if (!state->matches[i].scope[0])
+          continue;
+        if (state->matches[i].start <= idx && idx < state->matches[i].end) {
+          TxMatchRange *range = &state->matches[i];
+          TxStyleSpan _style;
+          if (self->theme && !tx_style_from_scope(range->scope, self->theme, &_style)) {
+            range = NULL;
+          }
+          if (range) {
+            match_range = range;
+            style = _style;
+          }
+        }
+      }
+    }
+
+    if (match_range && self->theme) { 
+      uint32_t rgb[] = {255, 255, 255};
+      if (txt_color_to_rgb(style.fg, rgb)) {
+        _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
+      }
+    }
+
+    printf("%c", *c);
+    _END_COLOR
+
+    c++;
+    idx++;
+  }
+}
+
+//------------------
+
+void tx_init_processor(TxParseProcessor *processor, TxProcessorType type) {
   memset(processor, 0, sizeof(TxParseProcessor));
+  switch (type) {
+  case TxProcessorTypeDump:
+    processor->line_start = dump_line_start;
+    processor->line_end = dump_line_end;
+    processor->open_tag = dump_open_tag;
+    processor->close_tag = dump_close_tag;
+    processor->capture = dump_capture;
+    break;
+  case TxProcessorTypeCollect:
+  case TxProcessorTypeCollectAndDump:
+  case TxProcessorTypeCollectAndRender:
+    processor->line_start = collect_line_start;
+    processor->line_end = null_line_end;
+    processor->open_tag = collect_open_tag;
+    processor->close_tag = collect_close_tag;
+    processor->capture = collect_capture;
+    break;
+  default:
+    processor->line_start = null_line_start;
+    processor->line_end = null_line_end;
+    processor->open_tag = null_open_tag;
+    processor->close_tag = null_close_tag;
+    processor->capture = null_capture;
+    break;
+  }
+
+  switch (type) {
+  case TxProcessorTypeCollectAndDump:
+    processor->line_end = collect_dump_line_end;
+    break;
+  case TxProcessorTypeCollectAndRender:
+    processor->line_end = collect_render_line_end;
+    break;
+  }
 }

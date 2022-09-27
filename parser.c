@@ -2,13 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
-#define _END_COLOR printf("\x1b[0m");
+// #define _DEBUG_COLLECT
+// #define _DEBUG_MATCHES
 
-// #define _DEBUG_CAPTURES
-
-static char_u *extract_buffer_range(char_u *anchor, size_t start, size_t end) {
+char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end) {
   static char_u temp[TX_SCOPE_NAME_LENGTH];
+  strcpy(temp, "");
   char_u *buffer = anchor;
   int len = (end - start);
   if (len >= TX_SCOPE_NAME_LENGTH) {
@@ -88,6 +87,7 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
 
   TxMatch null_state;
   tx_init_match(&null_state);
+
   TxMatch *state = _state;
   if (!state) {
     state = &null_state;
@@ -105,11 +105,6 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
   start = buffer_start;
   range = end;
   offset = 0;
-
-  // UChar *str = (UChar *)buffer_start;
-  // end = buffer_end;
-  // start = str;
-  // range = end;
 
   r = onig_search(regex, str, end, start, range, region, onig_options);
   if (r != ONIG_MISMATCH) {
@@ -133,15 +128,17 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
   onig_end();
   onig_region_free(region, 1);
 
-  // if (found) {
-  //   printf("matches %s (%d-%d) ", pattern, state->matches[0].start,
-  //          state->matches[0].end);
-  //   _BEGIN_COLOR(255, 0, 255)
-  //   printf(extract_buffer_range(anchor, state->matches[0].start,
-  //                               state->matches[0].end));
-  //   printf("\n");
-  //   _END_COLOR
-  // }
+#ifdef _DEBUG_MATCHES
+  if (found) {
+    printf("matches %s (%d-%d) ", pattern, state->matches[0].start,
+           state->matches[0].end);
+    _BEGIN_COLOR(255, 0, 255)
+    printf(tx_extract_buffer_range(anchor, state->matches[0].start,
+                                   state->matches[0].end));
+    printf("\n");
+    _END_COLOR
+  }
+#endif
 
   return found;
 }
@@ -227,17 +224,15 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   TxNode *parent = node->parent;
 
   expand_name(syntax->name, state->matches[0].scope, state);
-  if (processor && processor->capture) {
-    processor->capture(processor, state);
-  }
 
-#ifdef _DEBUG_CAPTURES
+#ifdef _DEBUG_COLLECT
   char_u *temp = state->matches[0].scope;
   printf("> %s\n", temp);
   printf("+ (%d-%d) ", state->matches[0].start, state->matches[0].end);
   _BEGIN_COLOR(255, 255, 0)
-  printf(extract_buffer_range(state->matches[0].buffer, state->matches[0].start,
-                              state->matches[0].end));
+  printf(tx_extract_buffer_range(state->matches[0].buffer,
+                                 state->matches[0].start,
+                                 state->matches[0].end));
   _END_COLOR
   printf(" <<<<< \n");
 #endif
@@ -254,19 +249,21 @@ static void collect_captures(char_u *anchor, TxMatch *state,
     if (!capture_key)
       break;
 
-    TxMatchRange *m = &state->matches[j + 1];
+    int capture_idx = j + 1;
+    TxMatchRange *m = &state->matches[capture_idx];
 
     TxNode *n = txn_get(captures, capture_key);
     if (n) {
       TxNode *scope = txn_get(n, "name");
       if (scope) {
         expand_name(scope->string_value, temp, state);
-        strncpy(m->scope, extract_buffer_range(anchor, m->start, m->end),
-                TX_SCOPE_NAME_LENGTH);
-#ifdef _DEBUG_CAPTURES
-        printf(":: (%d-%d) %s [", m->start, m->end, temp);
+        strncpy(m->scope, temp, TX_SCOPE_NAME_LENGTH);
+        // strncpy(m->scope, tx_extract_buffer_range(anchor, m->start, m->end),
+        //         TX_SCOPE_NAME_LENGTH);
+#ifdef _DEBUG_COLLECT
+        printf(":: %d (%d-%d) %s [", capture_idx, m->start, m->end, temp);
         _BEGIN_COLOR(0, 255, 255)
-        printf("%s", m->scope);
+        printf("%s", tx_extract_buffer_range(anchor, m->start, m->end));
         _END_COLOR
         printf("]\n");
 #endif
@@ -285,6 +282,9 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
   char_u *end = buffer_end;
   char_u *anchor = buffer_start;
 
+  if (processor) {
+    processor->parser_state = stack;
+  }
   if (processor && processor->line_start) {
     processor->line_start(processor, buffer_start, buffer_end);
   }
@@ -298,7 +298,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     TxMatch end_match;
     tx_init_match(&end_match);
 
-#ifdef _DEBUG_CAPTURES
+#ifdef _DEBUG_COLLECT
     printf("stack: %d offset: %d\n", stack->size, start - buffer_start);
 #endif
 
@@ -322,6 +322,9 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
       tx_state_pop(stack);
 
+      if (processor && processor->close_tag) {
+        processor->close_tag(processor, &pattern_match);
+      }
       collect_match(pattern_match.syntax, &pattern_match, processor);
 
       if (pattern_match.syntax->end_captures) {
@@ -329,7 +332,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
                          pattern_match.syntax->end_captures, processor);
       }
 
-#ifdef _DEBUG_CAPTURES
+#ifdef _DEBUG_COLLECT
       printf("}}}}\n");
 #endif
 
@@ -347,10 +350,14 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
         tx_state_push(stack, &pattern_match);
 
-#ifdef _DEBUG_CAPTURES
+        if (processor && processor->open_tag) {
+          processor->open_tag(processor, &pattern_match);
+        }
+
+#ifdef _DEBUG_COLLECT
         printf("{{{{\n");
-        printf(extract_buffer_range(anchor, pattern_match.matches[0].start,
-                                    pattern_match.matches[0].end));
+        printf(tx_extract_buffer_range(anchor, pattern_match.matches[0].start,
+                                       pattern_match.matches[0].end));
         printf("\n");
 #endif
         if (pattern_match.syntax->begin_captures) {
@@ -360,6 +367,10 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
         }
 
       } else if (pattern_match.syntax->rx_match) {
+
+        if (processor && processor->capture) {
+          processor->capture(processor, &pattern_match);
+        }
 
         if (pattern_match.syntax->captures) {
 

@@ -135,22 +135,34 @@ typedef struct {
 typedef struct {
   TxSyntax *syntax;
   size_t size;
-  TxMatchRange matches[TX_MAX_MATCHES];
+  TxMatchRange matches[TX_MAX_MATCHES]; // todo rename to ranges
 } TxMatch;
 
 typedef struct {
   size_t size;
-  TxMatch states[TX_MAX_STACK_DEPTH];
+  TxMatch states[TX_MAX_STACK_DEPTH]; // todo rename to matches
 } TxParserState;
 
+typedef enum {
+  TxProcessorTypeNull,
+  TxProcessorTypeDump,
+  TxProcessorTypeCollect,
+  TxProcessorTypeCollectAndDump,
+  TxProcessorTypeCollectAndRender,
+} TxProcessorType;
+
 typedef struct {
-  TxParserState parser_state;
+  TxParserState *parser_state;
+  TxParserState line_parser_state;
   void (*line_start)(struct TxParseProcessor *self, char_u *buffer_start,
                      char_u *buffer_end);
   void (*line_end)(struct TxParseProcessor *self);
   void (*open_tag)(struct TxParseProcessor *self, TxMatch *state);
   void (*close_tag)(struct TxParseProcessor *self, TxMatch *state);
   void (*capture)(struct TxParseProcessor *self, TxMatch *state);
+  char_u *buffer_start;
+  char_u *buffer_end;
+  TxTheme *theme;
 } TxParseProcessor;
 
 TxNode *txn_new(char_u *name, TxValueType type);
@@ -193,9 +205,10 @@ void tx_shutdown();
 
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
                    TxParserState *stack, TxParseProcessor *processor);
+char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end);
 
 void tx_init_match(TxMatch *match);
-void tx_init_processor(TxParseProcessor *processor);
+void tx_init_processor(TxParseProcessor *processor, TxProcessorType type);
 void tx_init_parser_state(TxParserState *stack, TxSyntax *syntax);
 void tx_state_push(TxParserState *stack, TxMatch *match);
 void tx_state_pop(TxParserState *stack);
@@ -232,6 +245,9 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #else
 #define DIR_SEPARATOR '\\'
 #endif
+
+#define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
+#define _END_COLOR printf("\x1b[0m");
 
 bool txt_parse_color(const char_u *color, uint32_t *result);
 bool txt_color_to_rgb(uint32_t color, uint32_t result[3]);

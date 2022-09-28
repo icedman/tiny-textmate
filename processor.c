@@ -1,13 +1,6 @@
 #include "textmate.h"
 #include <string.h>
 
-// #define _PRINT_BUFFER_RANGE(B, S, E)                                           \
-//   {                                                                            \
-//     for (int k = 0; k < (E - S); k++) {                                        \
-//       printf("%c", B[k]);                                                      \
-//     }                                                                          \
-//   }
-
 #define _PRINT_BUFFER_RANGE(B, S, E)                                           \
   { printf("%s", tx_extract_buffer_range(B, S, E)); }
 
@@ -31,7 +24,7 @@ static void null_capture(TxParseProcessor *self, TxMatch *state) {}
 static void dump_line_start(TxParseProcessor *self, char_u *buffer_start,
                             char_u *buffer_end) {
   printf("---------------------\n");
-  _PRINT_BUFFER_RANGE(buffer_start, buffer_start, buffer_end)
+  _PRINT_BUFFER_RANGE(buffer_start, 0, buffer_end - buffer_start)
   printf("\n");
 }
 
@@ -63,6 +56,7 @@ static void dump_capture(TxParseProcessor *self, TxMatch *state) {
   for (int i = 0; i < state->size; i++) {
     if (!state->matches[i].scope[0])
       continue;
+    // if (state->matches[i].start < 0 || state->matches[i].end < 0) continue;
     _BEGIN_COLOR(0, 255, 255)
     _PRINT_BUFFER_RANGE(state->matches[i].buffer, state->matches[i].start,
                         state->matches[i].end);
@@ -124,13 +118,13 @@ static void collect_dump_line_end(TxParseProcessor *self) {
     for (int i = 0; i < state->size; i++) {
       if (!state->matches[i].scope[0])
         continue;
+      if (state->matches[i].start < 0 || state->matches[i].end < 0)
+        continue;
       _BEGIN_COLOR(0, 255, 255)
-      for (int k = 0; k < (state->matches[i].end - state->matches[i].start);
-           k++) {
-        printf("%c", state->matches[i].buffer[k]);
-      }
+      _PRINT_BUFFER_RANGE(state->matches[i].buffer, state->matches[i].start,
+                          state->matches[i].end);
       _END_FORMAT
-      printf(" :: [%s] %d (%d-%d)\n", state->matches[i].scope, i,
+      printf(" :: [%s] %d (%ld-%ld)\n", state->matches[i].scope, i,
              state->matches[i].start, state->matches[i].end);
     }
   }
@@ -161,14 +155,20 @@ static void collect_render_line_end(TxParseProcessor *self) {
       for (int i = 0; i < state->size; i++) {
         if (!state->matches[i].scope[0])
           continue;
+
+        TxMatchRange *range = &state->matches[i];
+
+        if (state->matches[i].start < 0 || state->matches[i].end < 0)
+          continue;
         if (state->matches[i].start <= idx && idx < state->matches[i].end) {
-          TxMatchRange *range = &state->matches[i];
           TxStyleSpan _style;
           if (self->theme &&
               !tx_style_from_scope(range->scope, self->theme, &_style)) {
             range = NULL;
           }
           if (range) {
+            // printf(">>> [%s] %d (%ld-%ld)\n", range->scope, idx,
+            //    range->start, range->end);
             match_range = range;
             style = _style;
           }

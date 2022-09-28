@@ -6,11 +6,11 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
-#define TX_SYNTAX_VERBOSE_REGEX
+// #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TX_MAX_STACK_DEPTH 32
-#define TX_MAX_MATCHES 9
+#define TX_MAX_MATCHES 128 // unbelievably .. cpp has 81
 #define TX_SCOPE_NAME_LENGTH 128
 
 #ifndef char_u
@@ -65,6 +65,7 @@ typedef struct _TxNode {
 
 typedef struct _TxSyntax {
   struct TxNode *self;
+  struct TxNode *root;
   struct TxSyntaxNode *repository;
 
   struct TxSyntaxNode *patterns;
@@ -133,8 +134,6 @@ typedef struct {
 } TxThemeNode;
 
 typedef struct {
-  size_t start;
-  size_t end;
   uint32_t fg;
   uint32_t bg;
   bool italic;
@@ -144,14 +143,15 @@ typedef struct {
 
 typedef struct {
   char_u *buffer;
-  size_t start;
-  size_t end;
+  int32_t start;
+  int32_t end;
   char_u scope[TX_SCOPE_NAME_LENGTH];
 } TxMatchRange;
 
 typedef struct {
   TxSyntax *syntax;
   size_t size;
+  size_t rank;
   TxMatchRange matches[TX_MAX_MATCHES]; // todo rename to ranges
 } TxMatch;
 
@@ -280,6 +280,8 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #define _BEGIN_REVERSE
 #define _END_FORMAT
 #endif
+
+#define TX_LOG printf
 
 bool txt_parse_color(const char_u *color, uint32_t *result);
 bool txt_color_to_rgb(uint32_t color, uint32_t result[3]);

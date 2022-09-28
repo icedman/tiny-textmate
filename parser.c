@@ -75,6 +75,9 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
       syntax->include_external = false;
 
       if (syntax->include_scope) {
+        // printf(">me:%x\n", node);
+        // printf("? include %s\n", syntax->include_scope);
+
         char_u ns[TX_SCOPE_NAME_LENGTH] = "";
         char_u scope[TX_SCOPE_NAME_LENGTH] = "";
         strcpy(ns, syntax->include_scope);
@@ -85,17 +88,25 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
         }
 
         TxSyntaxNode *target_node = NULL;
+
         if (strlen(ns) > 0 && ns[0] != '#') {
           target_node = tx_syntax_from_scope(ns);
+          // printf("global %s %x\n", ns, target_node);
+        } else {
+          strcpy(scope, syntax->include_scope);
         }
 
-        // printf("include %s %s %x\n", ns, scope, target_node);
-
         if (strlen(scope) > 0) {
-          TxNode *root = txn_root(target_node ? target_node : node);
-          TxNode *repo_node = txn_get(root->first_child, "repository");
-          target_node = txn_get(repo_node, (scope + 1));
-          // todo add tests
+          // printf("#scoped\n");
+          TxNode *root =
+              txn_syntax_value(target_node ? target_node : node)->root;
+          TxNode *repo_node = txn_get(root, "repository");
+          target_node = repo_node ? txn_get(repo_node, scope + 1) : NULL;
+          // printf("# include [%s] source:%x root:%x repo:%x\n", scope+1,
+          // target_node, root, repo_node); if (!target_node) {
+          //   dump(root, 0);
+          //   exit(0);
+          // }
         }
 
         syntax->include = target_node;
@@ -141,10 +152,8 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
     count =
         region->num_regs < TX_MAX_MATCHES ? region->num_regs : TX_MAX_MATCHES;
     for (int i = 0; i < count; i++) {
-      if (region->beg[i] < 0) {
-        // partial match means no match
-        count = 0;
-        break;
+      if (region->beg[i] >= 0) {
+        state->rank++;
       }
       state->matches[i].buffer = anchor;
       state->matches[i].start = region->beg[i]; // + offset;
@@ -188,6 +197,7 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
              find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_match,
                         &match)) {
     match.syntax = syntax;
+    match.rank++;
   } else if (syntax->rx_end || syntax->rx_end_dynamic) {
     // skip
   } else {
@@ -214,12 +224,19 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
     TxSyntax *pattern_syntax = txn_syntax_value_proxy(p);
 
     match = match_first(anchor, start, end, pattern_syntax);
-    if (match.syntax) {
-      if (match.matches[0].start == 0) {
-        earliest_match = match;
-        break;
-      }
 
+    if (match.syntax) {
+      if (anchor + match.matches[0].start == start) {
+        // todo tm-parser (textmate) has a much more elaborate match ranking
+        if (!earliest_match.syntax || earliest_match.rank < match.rank) {
+          // printf("%d v %d\n", earliest_match.rank, match.rank);
+          earliest_match = match;
+          if (earliest_match.rank > 10) {
+            // earliest_match = match;
+            break;
+          }
+        }
+      }
       if (!earliest_match.syntax ||
           earliest_match.matches[0].start > match.matches[0].start) {
         earliest_match = match;
@@ -269,9 +286,9 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   printf("> %s\n", temp);
   printf("+ (%d-%d) ", state->matches[0].start, state->matches[0].end);
   _BEGIN_COLOR(255, 255, 0)
-  printf(tx_extract_buffer_range(state->matches[0].buffer,
-                                 state->matches[0].start,
-                                 state->matches[0].end));
+  printf("%s", tx_extract_buffer_range(state->matches[0].buffer,
+                                       state->matches[0].start,
+                                       state->matches[0].end));
   _END_FORMAT
   printf(" <<<<< \n");
 #endif
@@ -282,19 +299,16 @@ static void collect_captures(char_u *anchor, TxMatch *state,
                              TxParseProcessor *processor) {
   char_u temp[TX_SCOPE_NAME_LENGTH];
 
-  char_u *capture_keys[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", 0};
+  char_u *capture_key[8];
   for (int j = 0; j < TX_MAX_MATCHES; j++) {
-    char_u *capture_key = capture_keys[j];
-    if (!capture_key)
-      break;
-
     int capture_idx = j + 1;
+    sprintf(capture_key, "%d", capture_idx);
     TxMatchRange *m = &state->matches[capture_idx];
 
     TxNode *n = txn_get(captures, capture_key);
     if (n) {
       TxNode *scope = txn_get(n, "name");
-      if (scope) {
+      if (scope && m->start >= 0) {
         expand_name(scope->string_value, temp, state);
         strncpy(m->scope, temp, TX_SCOPE_NAME_LENGTH);
         // strncpy(m->scope, tx_extract_buffer_range(anchor, m->start, m->end),

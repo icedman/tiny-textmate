@@ -7,10 +7,10 @@
 #include <string.h>
 #include <sys/types.h>
 
-static void post_process_syntax(TxSyntaxNode *n) {
+static void post_process_syntax(TxSyntaxNode *n, TxSyntaxNode *root) {
   TxSyntax *syntax = txn_syntax_value(n);
-  TxNode *root = txn_root(n);
   if (syntax) {
+    syntax->root = root;
     TxNode *repo_node = txn_syntax_value(root)->repository;
     TxNode *include_node = txn_get(n, "include");
     if (include_node && include_node->string_value && !syntax->include) {
@@ -30,14 +30,16 @@ static void post_process_syntax(TxSyntaxNode *n) {
         syntax->include_external = true;
         syntax->include_scope =
             txn_set(n, "include_scope", txn_new_string(path))->string_value;
-        // printf("external %s\n", path);
+        // TX_LOG("external %s\n", path);
       }
 
-      if (repo_node) {
+      if (!syntax->include && repo_node) {
         TxNode *include_node = txn_get(repo_node, path);
         if (include_node) {
           syntax->include = include_node;
-          // printf("include! %s\n", path);
+          // TX_LOG("include %s\n", path);
+        } else {
+          // TX_LOG("include not found %s\n", path);
         }
       }
     }
@@ -45,7 +47,7 @@ static void post_process_syntax(TxSyntaxNode *n) {
 
   TxSyntaxNode *c = n->self.first_child;
   while (c) {
-    post_process_syntax(c);
+    post_process_syntax(c, root);
     c = c->self.next_sibling;
   }
 }
@@ -88,7 +90,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           if (strcmp(key, "end") == 0) {
             char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
                                       "\\6", "\\7", "\\8", "\\9", 0};
-            for (int j = 0; j < TX_MAX_MATCHES; j++) {
+            for (int j = 0; j < 9 /*TX_MAX_MATCHES*/; j++) {
               if (strstr(item->valuestring, capture_keys[j])) {
                 TxNode *ns = txn_new_string(item->valuestring);
                 syntax->rx_end_dynamic = true;
@@ -149,12 +151,17 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         txn_set(node, key, captures);
         *capture_nodes[i] = captures;
 
-        char_u *capture_keys[] = {"1", "2", "3", "4", "5",
-                                  "6", "7", "8", "9", 0};
+        // char_u *capture_keys[] = {"1", "2", "3", "4", "5",
+        //                           "6", "7", "8", "9", 0};
+        // for (int j = 0; j < TX_MAX_MATCHES; j++) {
+        //   char_u *capture_key = capture_keys[j];
+        //   if (!capture_key)
+        //     break;
+
+        char_u *capture_key[8];
         for (int j = 0; j < TX_MAX_MATCHES; j++) {
-          char_u *capture_key = capture_keys[j];
-          if (!capture_key)
-            break;
+          int capture_idx = j + 1;
+          sprintf(capture_key, "%d", capture_idx);
           cJSON *capture_item = cJSON_GetObjectItem(item, capture_key);
           if (capture_item) {
             TxSyntaxNode *capture_node = txn_new_syntax();
@@ -415,8 +422,9 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
         cJSON *bg = NULL;
         cJSON *fontStyle = NULL;
 
-        if (!settings)
+        if (!settings) {
           continue;
+        }
 
         // todo... should allow styles without foreground color (ie. italic
         // only)
@@ -424,7 +432,10 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
         bg = cJSON_GetObjectItem(settings, "background");
         fontStyle = cJSON_GetObjectItem(settings, "fontStyle");
 
-        if (!fg && !bg && !fontStyle)
+        if (!fg && !bg && !fontStyle) {
+          continue;
+        }
+        if (!fg)
           continue;
 
         size_t scopes = cJSON_GetArraySize(scope);
@@ -512,7 +523,8 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   cJSON_free(json);
   tx_free(content);
 
-  post_process_syntax(root);
+  // printf("post process!\n");
+  post_process_syntax(root, root);
   return root;
 }
 

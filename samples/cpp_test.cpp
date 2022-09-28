@@ -1,10 +1,15 @@
 #include <stdio.h>
 
-class X {
-public:
-    X();
-};
+#if XX
+#define YY
+#else
+#define ZZ
+#endif
 
 int main(int argc, char **argv) {
     return 0;
+}
+
+void tx::test() {
+
 }

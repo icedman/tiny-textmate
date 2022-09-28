@@ -65,7 +65,7 @@ lang_found:
   if (language) {
     TxNode *scope = txn_get(language, "scopeName");
     if (scope) {
-      printf("found %s\n", scope->string_value);
+      TX_LOG("found %s\n", scope->string_value);
       return tx_syntax_from_scope(scope->string_value);
     }
   }
@@ -116,7 +116,7 @@ void tx_read_package_dir(char *path) {
   char_u base_path[MAX_PATH_LENGTH];
   sprintf(base_path, "%s/", path);
   dp = opendir(base_path);
-  printf("%s\n", base_path);
+  TX_LOG("%s\n", base_path);
   if (dp != NULL) {
     while ((ep = readdir(dp)) != NULL) {
       char_u full_path[MAX_PATH_LENGTH] = "";

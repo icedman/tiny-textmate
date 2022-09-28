@@ -73,6 +73,13 @@ static MunitResult test_packages(const MunitParameter params[], void *data) {
   return MUNIT_OK;
 }
 
+static MunitResult test_theme(const MunitParameter params[], void *data) {
+  (void)params;
+  (void)data;
+
+  return MUNIT_OK;
+}
+
 static void *test_setup(const MunitParameter params[], void *user_data) {
   (void)params;
   tx_initialize();
@@ -89,6 +96,8 @@ static MunitTest test_suite_tests[] = {
     {(char *)"/tests/packages", test_packages, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"/tests/syntax", test_syntax, test_setup, test_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"/tests/theme", test_theme, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 

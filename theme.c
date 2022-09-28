@@ -17,9 +17,14 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
         style->bold = fsv->bold;
         style->underline = fsv->underline;
         found = true;
+        // break;
       }
     }
     child = child->next_sibling;
+  }
+
+  if (!found) {
+    // printf(">>?%s\n", scope);
   }
 
   return found;

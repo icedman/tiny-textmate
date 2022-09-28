@@ -5,6 +5,8 @@
 #define NAME_LENGTH 256
 
 void dump(TxNode *n, int level) {
+  if (level > 3)
+    return;
   char indent[64] = "";
   for (int i = 0; i < level * 2; i++) {
     indent[i] = ' ';

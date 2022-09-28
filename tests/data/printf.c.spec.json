@@ -1,0 +1,29 @@
+{
+   "1": {
+      "1" : {
+         "text" : "printf",
+         "scopes" : [
+            "entity.name.function.c",
+            "meta.function.definition.parameters.c",
+            "meta.function.c"
+         ]
+      },
+      "16" : {
+         "text" : "%s",
+         "scopes" : [
+            "constant.other.placeholder.c",
+            "string.quoted.double.c",
+            "meta.function.definition.parameters.c",
+            "meta.function.c"
+         ]
+      }
+   },
+   "2": {
+      "27" : {
+         "text" : ",",
+         "scopes" : [
+            "punctuation.separator.delimiter.c"
+         ]
+      }
+   }
+}

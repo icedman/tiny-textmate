@@ -88,16 +88,43 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
           if (strcmp(key, "end") == 0) {
-            char_u *capture_keys[] = {"\\1", "\\2", "\\3", "\\4", "\\5",
-                                      "\\6", "\\7", "\\8", "\\9", 0};
-            for (int j = 0; j < 9 /*TX_MAX_MATCHES*/; j++) {
-              if (strstr(item->valuestring, capture_keys[j])) {
-                TxNode *ns = txn_new_string(item->valuestring);
-                syntax->rx_end_dynamic = true;
-                syntax->rxs_end = ns->string_value;
-                break;
+            int len = strlen(item->valuestring) + 1024;
+            char_u *target = tx_malloc(len * sizeof(char_u));
+            char_u *tmp = tx_malloc(len * sizeof(char_u));
+            char_u *trailer = tx_malloc(len * sizeof(char_u));
+            char_u capture_key[8];
+
+            strcpy(target, item->valuestring);
+
+            bool dirty = true;
+            while (dirty) {
+              dirty = false;
+              for (int j = 0; j < TX_MAX_MATCHES; j++) {
+                sprintf(capture_key, "\\%d", j);
+                char_u *pos = strstr(target, capture_key);
+                if (pos) {
+                  strcpy(trailer, pos + (strlen(capture_key)));
+                  target[pos - target] = 0;
+                  sprintf(tmp, "%s[a-zA-Z0-9]{1,16}%s", target, trailer);
+                  strcpy(target, tmp);
+                  syntax->rx_end_dynamic = true;
+                  dirty = true;
+                }
               }
             }
+
+            if (syntax->rx_end_dynamic) {
+              // printf("rx_end recompiled %s .. to .. %s\n", item->valuestring,
+              // target);
+              TxNode *ns = txn_new_string(target);
+              txn_set_string_value(regex_node, target);
+              syntax->rxs_end = ns->string_value;
+              syntax->rx_end = tx_compile_pattern(target);
+            }
+
+            tx_free(trailer);
+            tx_free(tmp);
+            tx_free(target);
           }
 #endif
           if (!syntax->rx_end_dynamic) {
@@ -151,16 +178,9 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         txn_set(node, key, captures);
         *capture_nodes[i] = captures;
 
-        // char_u *capture_keys[] = {"1", "2", "3", "4", "5",
-        //                           "6", "7", "8", "9", 0};
-        // for (int j = 0; j < TX_MAX_MATCHES; j++) {
-        //   char_u *capture_key = capture_keys[j];
-        //   if (!capture_key)
-        //     break;
-
         char_u *capture_key[8];
         for (int j = 0; j < TX_MAX_MATCHES; j++) {
-          int capture_idx = j + 1;
+          int capture_idx = j;
           sprintf(capture_key, "%d", capture_idx);
           cJSON *capture_item = cJSON_GetObjectItem(item, capture_key);
           if (capture_item) {
@@ -290,7 +310,7 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
             txn_set(grammars_node, scope_name, grammar_node);
             char_u full_path[MAX_PATH_LENGTH] = "";
             char_u *last_separator = strrchr(base_path, DIR_SEPARATOR);
-            strcpy(full_path, base_path);
+            strncpy(full_path, base_path, MAX_PATH_LENGTH);
             if (!last_separator) {
               sprintf(full_path + strlen(base_path), "%s", relative_path);
             } else {
@@ -487,7 +507,7 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
 static void parse_json(cJSON *obj, TxNode *node) {
   if (cJSON_IsObject(obj) || cJSON_IsArray(obj)) {
     cJSON *child = obj->child;
-    while(child) {
+    while (child) {
       if (cJSON_IsString(child)) {
         txn_set(node, child->string, txn_new_string(child->valuestring));
       }

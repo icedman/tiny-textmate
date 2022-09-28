@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-static bool _debug = false;
+static char _debug = 'r';
 
 void dump(TxNode *n, int level);
 
@@ -29,8 +29,9 @@ int main(int argc, char **argv) {
     path = argv[argc - 1];
   }
   for (int i = 1; i < argc - 1; i++) {
-    if (strcmp(argv[i], "-d") == 0) {
-      _debug = true;
+    if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-c") == 0 ||
+        strcmp(argv[i], "-r") == 0) {
+      _debug = argv[i][1];
     }
     if (strcmp(argv[i - 1], "-t") == 0) {
       theme_path = argv[i];
@@ -64,10 +65,20 @@ int main(int argc, char **argv) {
   tx_init_parser_state(&stack, txn_syntax_value(root));
 
   TxParseProcessor processor;
-  // tx_init_processor(&processor, TxProcessorTypeDump);
-  // tx_init_processor(&processor, TxProcessorTypeCollect);
-  tx_init_processor(&processor, _debug ? TxProcessorTypeCollectAndDump
-                                       : TxProcessorTypeCollectAndRender);
+  switch (_debug) {
+  case 'd':
+    tx_init_processor(&processor, TxProcessorTypeCollectAndDump);
+    break;
+  case 'c':
+    tx_init_processor(&processor, TxProcessorTypeCollect);
+    break;
+  case 'r':
+    tx_init_processor(&processor, TxProcessorTypeCollectAndRender);
+    break;
+  default:
+    tx_init_processor(&processor, TxProcessorTypeDump);
+    break;
+  }
   processor.theme = txn_theme_value(theme);
 
   // dump(root, 0);

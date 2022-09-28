@@ -9,9 +9,9 @@
 // #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
-#define TX_MAX_STACK_DEPTH 32
-#define TX_MAX_MATCHES 128 // unbelievably .. cpp has 81
-#define TX_SCOPE_NAME_LENGTH 128
+#define TX_MAX_STACK_DEPTH 64 // json, xml could be very deep
+#define TX_MAX_MATCHES 100    // unbelievably .. cpp has a max of 81 captures
+#define TX_SCOPE_NAME_LENGTH 64
 
 #ifndef char_u
 typedef uint8_t char_u;

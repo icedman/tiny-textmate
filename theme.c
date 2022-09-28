@@ -24,7 +24,12 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   }
 
   if (!found) {
-    // printf(">>?%s\n", scope);
+    // printf("!%s\n", scope);
+    // if (strcmp(scope, "meta.qualified_type.cpp") == 0) {
+    // style->fg = txt_make_color(255,0,255);
+    // style->bold = true;
+    // found = true;
+    // }
   }
 
   return found;

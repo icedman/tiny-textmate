@@ -5,6 +5,8 @@
 // #define _DEBUG_COLLECT
 // #define _DEBUG_MATCHES
 
+extern uint32_t _match_execs;
+
 void dump(TxNode *n, int level);
 
 char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end) {
@@ -22,7 +24,7 @@ char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end) {
 
 static bool expand_name(char_u *scope, char_u *target, TxMatch *state) {
   if (!scope) {
-    strcpy(target, "");
+    strncpy(target, "", TX_SCOPE_NAME_LENGTH);
     return false;
   }
   char_u trailer[TX_SCOPE_NAME_LENGTH];
@@ -36,7 +38,7 @@ static bool expand_name(char_u *scope, char_u *target, TxMatch *state) {
   bool expanded = true;
 
   while (placeholder = strchr(target, '$')) {
-    strcpy(trailer, placeholder);
+    strncpy(trailer, placeholder, TX_SCOPE_NAME_LENGTH);
     trailer_advanced = strchr(trailer, '.');
     if (!trailer_advanced) {
       trailer_advanced = trailer;
@@ -80,11 +82,11 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 
         char_u ns[TX_SCOPE_NAME_LENGTH] = "";
         char_u scope[TX_SCOPE_NAME_LENGTH] = "";
-        strcpy(ns, syntax->include_scope);
+        strncpy(ns, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
         char_u *u = strchr(syntax->include_scope, '#');
         if (u) {
           ns[u - syntax->include_scope] = 0;
-          strcpy(scope, u);
+          strncpy(scope, u, TX_SCOPE_NAME_LENGTH);
         }
 
         TxSyntaxNode *target_node = NULL;
@@ -93,7 +95,7 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
           target_node = tx_syntax_from_scope(ns);
           // printf("global %s %x\n", ns, target_node);
         } else {
-          strcpy(scope, syntax->include_scope);
+          strncpy(scope, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
         }
 
         if (strlen(scope) > 0) {
@@ -125,6 +127,8 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
                        regex_t *regex, char_u *pattern, TxMatch *_state) {
   bool found = false;
+
+  _match_execs++;
 
   TxMatch null_state;
   tx_init_match(&null_state);
@@ -197,7 +201,7 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
              find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_match,
                         &match)) {
     match.syntax = syntax;
-    match.rank++;
+    match.rank++; // begin is preferred over match?
   } else if (syntax->rx_end || syntax->rx_end_dynamic) {
     // skip
   } else {
@@ -215,6 +219,7 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
     return earliest_match;
   }
 
+  // bool matched_at_start = false;
   TxNode *p = patterns->first_child;
   while (p) {
     TxMatch match;
@@ -229,18 +234,22 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
       if (anchor + match.matches[0].start == start) {
         // todo tm-parser (textmate) has a much more elaborate match ranking
         if (!earliest_match.syntax || earliest_match.rank < match.rank) {
-          // printf("%d v %d\n", earliest_match.rank, match.rank);
           earliest_match = match;
-          if (earliest_match.rank > 10) {
-            // earliest_match = match;
-            break;
-          }
+          // matched_at_start = true;
+          break;
         }
       }
+
       if (!earliest_match.syntax ||
           earliest_match.matches[0].start > match.matches[0].start) {
         earliest_match = match;
       }
+
+      // no need to proceed further
+      // if (matched_at_start &&
+      //     match.matches[0].start > earliest_match.matches[0].start) {
+      //   break;
+      // }
     }
 
     p = p->next_sibling;
@@ -256,19 +265,23 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
 
   regex_t *regex = syntax->rx_end;
 
-  if (syntax->rx_end_dynamic) {
-    regex = NULL;
+  // if (syntax->rx_end_dynamic && !syntax->rx_end) {
+  //   printf(">%s\n", syntax->rxs_end);
+  //   printf("dynamic end - not yet implemented\n");
+  // }
 
-    printf(">%s\n", syntax->rxs_end);
-    printf("dynamic end - not yet implemented\n");
-    exit(0);
-  }
   if (!regex) {
     return match;
   }
 
   if (find_match(anchor, start, end, regex, syntax->rxs_end, &match)) {
     match.syntax = syntax;
+    // if (syntax->rx_end_dynamic) {
+    //   printf("dynamic match!\n");
+    //   printf("%s", tx_extract_buffer_range(match.matches[0].buffer,
+    //                                        match.matches[0].start,
+    //                                        match.matches[0].end));
+    // }
   }
 
   return match;
@@ -301,7 +314,7 @@ static void collect_captures(char_u *anchor, TxMatch *state,
 
   char_u *capture_key[8];
   for (int j = 0; j < TX_MAX_MATCHES; j++) {
-    int capture_idx = j + 1;
+    int capture_idx = j;
     sprintf(capture_key, "%d", capture_idx);
     TxMatchRange *m = &state->matches[capture_idx];
 

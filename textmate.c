@@ -29,6 +29,7 @@ static uint32_t _nodes_allocated = 0;
 static uint32_t _nodes_freed = 0;
 static uint32_t _allocated = 0;
 static uint32_t _freed = 0;
+uint32_t _match_execs = 0;
 
 static void *tx_malloc_default(size_t size) {
   void *result = malloc(size);
@@ -357,11 +358,16 @@ void tx_init_parser_state(TxParserState *stack, TxSyntax *syntax) {
 
 void tx_state_push(TxParserState *stack, TxMatch *state) {
   // replace last on the stack
-  if (stack->size >= TX_MAX_STACK_DEPTH - 1) {
-    stack->size--;
-  }
   memcpy(&stack->states[stack->size], state, sizeof(TxMatch));
   stack->size++;
+
+  // when so deep a nest - discard; but always retain the root
+  if (stack->size == TX_MAX_STACK_DEPTH) {
+    int len = stack->size >> 1;
+    memcpy(&stack->states[1], &stack->states[stack->size - len],
+           len * sizeof(TxMatch));
+    stack->size = len + 1;
+  }
 }
 
 void tx_state_pop(TxParserState *stack) {
@@ -383,4 +389,5 @@ void tx_stats() {
   printf("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated,
          _nodes_freed);
   printf("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
+  printf("regex matches: %d\n", _match_execs);
 }

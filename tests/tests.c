@@ -18,7 +18,7 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
   (void)params;
   (void)data;
 
-  char* path = munit_parameters_get(params, "path");
+  char *path = munit_parameters_get(params, "path");
 
   tx_read_package_dir(EXTENSIONS_PATH);
 
@@ -44,7 +44,11 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
 
     char spec_path[1024];
     sprintf(spec_path, "%s.spec.json", path);
-    TxNode*spec = txn_load_json(spec_path);
+    TxNode *spec = txn_load_json(spec_path);
+
+    _BEGIN_COLOR(255,255,0)
+    printf("---[ %s ]---\n", path);
+    _END_FORMAT
 
     char temp[1024];
     FILE *fp = fopen(path, "r");
@@ -53,14 +57,14 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
       strcpy(temp, "");
       fgets(temp, 1024, fp);
       int len = strlen(temp);
-      printf("%s\n", temp);
+      printf("%s", temp);
       tx_parse_line(temp, temp + len + 1, &stack, &processor);
 
       char nz[32];
       sprintf(nz, "%d", row);
       TxNode *r = txn_get(spec, nz);
       if (r) {
-        for(int col=1; col<len; col++) {
+        for (int col = 1; col < len; col++) {
           sprintf(nz, "%d", col);
           TxNode *c = txn_get(r, nz);
           if (c) {
@@ -68,27 +72,25 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
             TxNode *scopes = txn_get(c, "scopes");
             munit_assert_not_null(strstr(temp + (col - 1), text->string_value));
 
-            _BEGIN_COLOR(0,255,255)
+            _BEGIN_COLOR(0, 255, 255)
             printf("%s\n", text->string_value);
             _END_FORMAT
 
             TxNode *ch = scopes->first_child;
-            while(ch) {
-              printf("%s", ch->string_value);
+            while (ch) {
               bool scope_found = false;
-              for(int j=0; j<processor.line_parser_state.size && !scope_found; j++) {
+              for (int j = 0;
+                   j < processor.line_parser_state.size && !scope_found; j++) {
                 TxMatch *state = &processor.line_parser_state.states[j];
                 for (int i = 0; i < state->size && !scope_found; i++) {
                   if (!state->matches[i].scope[0])
                     continue;
                   if (state->matches[i].start < 0 || state->matches[i].end < 0)
                     continue;
-                  if (state->matches[i].start > col || state->matches[i].end < col) {
+                  if (state->matches[i].start > col ||
+                      state->matches[i].end < col) {
                     continue;
                   }
-                  // printf(">> %s %d %d\n", state->matches[i].scope,
-                  //   state->matches[i].start, state->matches[i].end);
-
                   if (strcmp(state->matches[i].scope, ch->string_value) == 0) {
                     scope_found = true;
                   }
@@ -96,19 +98,18 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
               }
 
               if (scope_found) {
-                _BEGIN_COLOR(0,255,0)
-                _PRINT_CHECK(" ", "")
+                _BEGIN_COLOR(0, 255, 0)
+                _PRINT_CHECK("", " ")
               } else {
-                _BEGIN_COLOR(255,0,0)
-                _PRINT_CROSS(" ", "")
+                _BEGIN_COLOR(255, 0, 0)
+                _PRINT_CROSS("", " ")
               }
               _END_FORMAT
-              printf("\n");
+              printf("%s\n", ch->string_value);
 
-              munit_assert_true(scope_found);              
+              munit_assert_true(scope_found);
               ch = ch->next_sibling;
             }
-
           }
         }
       }
@@ -158,7 +159,7 @@ static void test_tear_down(void *fixture) {
 }
 
 static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
-                                    // (char *)"./tests/data/main.c", 
+                                    (char *)"./tests/data/printf.c",
                                     NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};

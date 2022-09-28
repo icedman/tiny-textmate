@@ -222,6 +222,8 @@ TxFontStyle *txn_font_style_value(TxFontStyleNode *pkn);
 void tx_initialize();
 void tx_shutdown();
 
+TxNode *txn_load_json(char_u *path);
+
 void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
                    TxParserState *stack, TxParseProcessor *processor);
 char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end);

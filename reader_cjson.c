@@ -484,6 +484,31 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
   }
 }
 
+static void parse_json(cJSON *obj, TxNode *node) {
+  if (cJSON_IsObject(obj) || cJSON_IsArray(obj)) {
+    cJSON *child = obj->child;
+    while(child) {
+      if (cJSON_IsString(child)) {
+        txn_set(node, child->string, txn_new_string(child->valuestring));
+      }
+      if (cJSON_IsNumber(child)) {
+        txn_set(node, child->string, txn_number_value(child->valueint));
+      }
+      if (cJSON_IsObject(child)) {
+        TxNode *child_obj = txn_new_object();
+        parse_json(child, child_obj);
+        txn_set(node, child->string, child_obj);
+      }
+      if (cJSON_IsArray(child)) {
+        TxNode *child_obj = txn_new_array();
+        parse_json(child, child_obj);
+        txn_set(node, child->string, child_obj);
+      }
+      child = child->next;
+    }
+  }
+}
+
 // --------------------
 // re-implement these next functions if you want to ditch cjson
 // TxSyntaxNode *txn_load_syntax(char_u *path)
@@ -586,4 +611,34 @@ TxPackageNode *txn_load_package(char_u *path) {
   cJSON_free(json);
   tx_free(content);
   return pkn;
+}
+
+TxNode *txn_load_json(char_u *path) {
+  FILE *fp = fopen(path, "r");
+
+  if (!fp) {
+    return NULL;
+  }
+
+  fseek(fp, 0, SEEK_END);
+  size_t sz = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  char_u *content = tx_malloc(sz);
+  fread(content, sz, 1, fp);
+  fclose(fp);
+
+  cJSON *json = cJSON_Parse(content);
+  if (json == NULL) {
+    const char *error_ptr = cJSON_GetErrorPtr();
+    if (error_ptr != NULL) {
+      printf("Error before: %s\n", error_ptr);
+    }
+  }
+
+  TxNode *root = txn_new_object();
+  parse_json(json, root);
+
+  cJSON_free(json);
+  tx_free(content);
+  return root;
 }

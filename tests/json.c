@@ -11,12 +11,12 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
-  TxSyntaxNode *root = txn_load_syntax("./samples/c.json");
+  TxSyntaxNode *root = txn_load_json("./tests/data/main.c.spec.json");
+  // TxSyntaxNode *root = txn_load_json("./samples/c.json");
 
   TX_TIMER_END
 
   dump(root, 0);
-  printf("grammar loaded at %fsecs\n", _cpu_time_used);
 
   txn_free(root);
 

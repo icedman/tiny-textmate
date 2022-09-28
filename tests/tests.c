@@ -11,10 +11,14 @@
 #endif
 
 #define EXTENSIONS_PATH "./tests/data/extensions"
+#define _PRINT_CHECK(lead, tail) printf("%s\xE2\x9C\x94%s", lead, tail);
+#define _PRINT_CROSS(lead, tail) printf("%s\xE2\x9C\x95%s", lead, tail);
 
 static MunitResult test_syntax(const MunitParameter params[], void *data) {
   (void)params;
   (void)data;
+
+  char* path = munit_parameters_get(params, "path");
 
   tx_read_package_dir(EXTENSIONS_PATH);
 
@@ -22,7 +26,7 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
   munit_assert_not_null(packages);
   munit_assert_size(tx_global_packages()->size, >, 0);
 
-  TxSyntaxNode *syntax_node = tx_syntax_from_scope("source.c");
+  TxSyntaxNode *syntax_node = tx_syntax_from_path(path);
 
   TxSyntax *syntax = txn_syntax_value(syntax_node);
   munit_assert_not_null(syntax);
@@ -33,24 +37,85 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
 
   {
     TxParserState stack;
-    TxMatch state;
-    tx_init_parser_state(&stack, NULL);
-    tx_init_match(&state);
-    state.syntax = syntax;
-    tx_state_push(&stack, &state);
+    tx_init_parser_state(&stack, syntax);
 
-    const char *line = "int main(int argc, char **argv)";
-    // int
-    // storage.type.built-in.primitive.c source.c
-    // storage.type
+    TxParseProcessor processor;
+    tx_init_processor(&processor, TxProcessorTypeCollect);
 
-    // main
-    // entity.name.function.c meta.function.definition.paramters.c
-    // meta.function.c source.c entity.name.function
+    char spec_path[1024];
+    sprintf(spec_path, "%s.spec.json", path);
+    TxNode*spec = txn_load_json(spec_path);
 
-    // argc
-    // variable.parameter.probably.c entity.name.function.c
-    // meta.function.definition.paramters.c meta.function.c source.c variable
+    char temp[1024];
+    FILE *fp = fopen(path, "r");
+    int row = 1;
+    while (!feof(fp)) {
+      strcpy(temp, "");
+      fgets(temp, 1024, fp);
+      int len = strlen(temp);
+      printf("%s\n", temp);
+      tx_parse_line(temp, temp + len + 1, &stack, &processor);
+
+      char nz[32];
+      sprintf(nz, "%d", row);
+      TxNode *r = txn_get(spec, nz);
+      if (r) {
+        for(int col=1; col<len; col++) {
+          sprintf(nz, "%d", col);
+          TxNode *c = txn_get(r, nz);
+          if (c) {
+            TxNode *text = txn_get(c, "text");
+            TxNode *scopes = txn_get(c, "scopes");
+            munit_assert_not_null(strstr(temp + (col - 1), text->string_value));
+
+            _BEGIN_COLOR(0,255,255)
+            printf("%s\n", text->string_value);
+            _END_FORMAT
+
+            TxNode *ch = scopes->first_child;
+            while(ch) {
+              printf("%s", ch->string_value);
+              bool scope_found = false;
+              for(int j=0; j<processor.line_parser_state.size && !scope_found; j++) {
+                TxMatch *state = &processor.line_parser_state.states[j];
+                for (int i = 0; i < state->size && !scope_found; i++) {
+                  if (!state->matches[i].scope[0])
+                    continue;
+                  if (state->matches[i].start < 0 || state->matches[i].end < 0)
+                    continue;
+                  if (state->matches[i].start > col || state->matches[i].end < col) {
+                    continue;
+                  }
+                  // printf(">> %s %d %d\n", state->matches[i].scope,
+                  //   state->matches[i].start, state->matches[i].end);
+
+                  if (strcmp(state->matches[i].scope, ch->string_value) == 0) {
+                    scope_found = true;
+                  }
+                }
+              }
+
+              if (scope_found) {
+                _BEGIN_COLOR(0,255,0)
+                _PRINT_CHECK(" ", "")
+              } else {
+                _BEGIN_COLOR(255,0,0)
+                _PRINT_CROSS(" ", "")
+              }
+              _END_FORMAT
+              printf("\n");
+
+              munit_assert_true(scope_found);              
+              ch = ch->next_sibling;
+            }
+
+          }
+        }
+      }
+
+      row++;
+    }
+    fclose(fp);
   }
 
   return MUNIT_OK;
@@ -92,11 +157,17 @@ static void test_tear_down(void *fixture) {
   munit_assert_ptr_equal(fixture, (void *)(uintptr_t)0xdeadbeef);
 }
 
+static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
+                                    // (char *)"./tests/data/main.c", 
+                                    NULL};
+static MunitParameterEnum syntax_test_params[] = {
+    {(char *)"path", test_syntax_paths}, {NULL, NULL}};
+
 static MunitTest test_suite_tests[] = {
     {(char *)"/tests/packages", test_packages, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"/tests/syntax", test_syntax, test_setup, test_tear_down,
-     MUNIT_TEST_OPTION_NONE, NULL},
+     MUNIT_TEST_OPTION_NONE, syntax_test_params},
     {(char *)"/tests/theme", test_theme, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};

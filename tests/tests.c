@@ -50,14 +50,14 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
     printf("---[ %s ]---\n", path);
     _END_FORMAT
 
-    char temp[1024];
+    char temp[TX_MAX_LINE_LENGTH];
     FILE *fp = fopen(path, "r");
     int row = 1;
     while (!feof(fp)) {
       strcpy(temp, "");
-      fgets(temp, 1024, fp);
+      fgets(temp, TX_MAX_LINE_LENGTH, fp);
       int len = strlen(temp);
-      printf("%s", temp);
+      // printf("%s", temp);
       tx_parse_line(temp, temp + len + 1, &stack, &processor);
 
       char nz[32];
@@ -69,13 +69,13 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
           TxNode *c = txn_get(r, nz);
           if (c) {
             TxNode *text = txn_get(c, "text");
-            TxNode *scopes = txn_get(c, "scopes");
             munit_assert_not_null(strstr(temp + (col - 1), text->string_value));
 
             _BEGIN_COLOR(0, 255, 255)
             printf("%s\n", text->string_value);
             _END_FORMAT
 
+            TxNode *scopes = txn_get(c, "scopes");
             TxNode *ch = scopes->first_child;
             while (ch) {
               bool scope_found = false;
@@ -160,6 +160,8 @@ static void test_tear_down(void *fixture) {
 
 static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
                                     (char *)"./tests/data/printf.c",
+                                    (char *)"./tests/data/hello.vue",
+                                    (char *)"./tests/data/includes.md",
                                     NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};

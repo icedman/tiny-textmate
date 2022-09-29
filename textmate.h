@@ -12,6 +12,7 @@
 #define TX_MAX_STACK_DEPTH 64 // json, xml could be very deep
 #define TX_MAX_MATCHES 100    // unbelievably .. cpp has a max of 81 captures
 #define TX_SCOPE_NAME_LENGTH 64
+#define TX_MAX_LINE_LENGTH 1024
 
 #ifndef char_u
 typedef uint8_t char_u;
@@ -73,6 +74,7 @@ typedef struct _TxSyntax {
   struct TxSyntaxNode *captures;
   struct TxSyntaxNode *begin_captures;
   struct TxSyntaxNode *end_captures;
+  struct TxSyntaxNode *while_captures;
 
   char_u *name;
   char_u *content_name;
@@ -84,10 +86,12 @@ typedef struct _TxSyntax {
   regex_t *rx_match;
   regex_t *rx_begin;
   regex_t *rx_end;
+  regex_t *rx_while;
 
   char_u *rxs_match;
   char_u *rxs_begin;
   char_u *rxs_end;
+  char_u *rxs_while;
   bool rx_end_dynamic;
 
 } TxSyntax;
@@ -288,5 +292,7 @@ regex_t *tx_compile_pattern(char_u *pattern);
 bool txt_parse_color(const char_u *color, uint32_t *result);
 bool txt_color_to_rgb(uint32_t color, uint32_t result[3]);
 uint32_t txt_make_color(int r, int g, int b);
+
+void tx_stats();
 
 #endif // TEXTMATE_H

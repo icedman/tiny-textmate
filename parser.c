@@ -93,22 +93,26 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 
         if (strlen(ns) > 0 && ns[0] != '#') {
           target_node = tx_syntax_from_scope(ns);
-          // printf("global %s %x\n", ns, target_node);
+          #ifdef _DEBUG_COLLECT
+          _BEGIN_UNDERLINE
+          _BEGIN_COLOR(255,0,0)
+          printf("global %s %x\n", ns, txn_syntax_value_proxy(target_node));
+          _END_FORMAT
+          #endif
         } else {
           strncpy(scope, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
         }
 
         if (strlen(scope) > 0) {
-          // printf("#scoped\n");
           TxNode *root =
               txn_syntax_value(target_node ? target_node : node)->root;
           TxNode *repo_node = txn_get(root, "repository");
           target_node = repo_node ? txn_get(repo_node, scope + 1) : NULL;
-          // printf("# include [%s] source:%x root:%x repo:%x\n", scope+1,
-          // target_node, root, repo_node); if (!target_node) {
-          //   dump(root, 0);
-          //   exit(0);
-          // }
+          
+          #ifdef _DEBUG_COLLECT
+          printf("# include [%s] source:%x root:%x repo:%x\n", scope+1,
+            target_node, root, repo_node);
+          #endif
         }
 
         syntax->include = target_node;
@@ -118,6 +122,7 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
     if (syntax->include) {
       TxSyntaxNode *include_node = syntax->include;
       syntax = txn_syntax_value_proxy(include_node);
+      // printf("include: %x\n", syntax);
     }
   }
 
@@ -198,11 +203,11 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
                                      syntax->rxs_match, &match)) {
     match.syntax = syntax;
   } else if (syntax->rx_begin &&
-             find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_match,
+             find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_begin,
                         &match)) {
     match.syntax = syntax;
     match.rank++; // begin is preferred over match?
-  } else if (syntax->rx_end || syntax->rx_end_dynamic) {
+  } else if (syntax->rx_end || syntax->rx_end_dynamic || syntax->rx_while) {
     // skip
   } else {
     match = match_first_pattern(anchor, start, end, syntax->patterns);
@@ -219,7 +224,7 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
     return earliest_match;
   }
 
-  // bool matched_at_start = false;
+  bool matched_at_start = false;
   TxNode *p = patterns->first_child;
   while (p) {
     TxMatch match;
@@ -228,16 +233,26 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
     TxNode *pattern_node = p;
     TxSyntax *pattern_syntax = txn_syntax_value_proxy(p);
 
+    // if (pattern_syntax->rx_while) {
+    //   // printf("while not yet supported\n");
+    //   p = p->next_sibling;
+    //   continue;
+    // }
+
     match = match_first(anchor, start, end, pattern_syntax);
 
     if (match.syntax) {
       if (anchor + match.matches[0].start == start) {
         // todo tm-parser (textmate) has a much more elaborate match ranking
-        if (!earliest_match.syntax || earliest_match.rank < match.rank) {
+        // if (!earliest_match.syntax || earliest_match.rank < match.rank) {
+          // if (earliest_match.syntax) {
+          //   printf("%d vs %d\n", earliest_match.rank, match.rank);
+          // }
           earliest_match = match;
-          // matched_at_start = true;
+          // TODO if we don't break hello.vue test will fail
+          matched_at_start = true;
           break;
-        }
+        // }
       }
 
       if (!earliest_match.syntax ||
@@ -246,10 +261,10 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
       }
 
       // no need to proceed further
-      // if (matched_at_start &&
-      //     match.matches[0].start > earliest_match.matches[0].start) {
-      //   break;
-      // }
+      if (matched_at_start &&
+          match.matches[0].start > earliest_match.matches[0].start) {
+        break;
+      }
     }
 
     p = p->next_sibling;
@@ -292,6 +307,7 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   TxNode *node = syntax->self;
   TxNode *parent = node->parent;
 
+  // todo understand name vs scope_name vs content_name (for begin/end)
   expand_name(syntax->name, state->matches[0].scope, state);
 
 #ifdef _DEBUG_COLLECT
@@ -355,6 +371,9 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     processor->line_start(processor, buffer_start, buffer_end);
   }
 
+  TxSyntax *last_syntax = NULL;
+
+
   while (true) {
     TxMatch *top = tx_state_top(stack);
     TxSyntax *syntax = top->syntax;
@@ -363,8 +382,11 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     tx_init_match(&pattern_match);
     TxMatch end_match;
     tx_init_match(&end_match);
+    TxMatch while_match;
+    tx_init_match(&while_match);
 
 #ifdef _DEBUG_COLLECT
+    printf("syntax: %x\n", syntax);
     printf("stack: %d offset: %d\n", stack->size, start - buffer_start);
 #endif
 
@@ -376,6 +398,19 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
     if (syntax->rx_end || syntax->rx_end_dynamic) {
       end_match = match_end(anchor, start, end, syntax);
+    }
+
+    if (syntax->rx_while) {
+      if (find_match(anchor, start, end, syntax->rx_while, syntax->rxs_while, &while_match)) {
+        while_match.syntax = syntax;
+      }
+      if (!while_match.syntax) {
+        if (processor && processor->close_tag) {
+          processor->close_tag(processor, top);
+        }
+        tx_state_pop(stack);
+        continue;
+      }
     }
 
     if (end_match.syntax &&
@@ -446,7 +481,13 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       }
     }
 
+    // prevent and endless loop - caused by inadequate match ranking
+    if (start == end && last_syntax == tx_state_top(stack)->syntax) {
+      break;
+    }
+
     start = end;
+    last_syntax = tx_state_top(stack)->syntax;
   }
 
   if (processor && processor->line_end) {

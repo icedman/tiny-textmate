@@ -1,0 +1,11 @@
+{
+   "117": {
+      "8" : {
+         "text" : "HelloWorld",
+         "scopes" : [
+            "string.quoted.double.js",
+            "meta.object.member.js"
+         ]
+      }
+  }
+}

@@ -37,6 +37,7 @@ static void post_process_syntax(TxSyntaxNode *n, TxSyntaxNode *root) {
         TxNode *include_node = txn_get(repo_node, path);
         if (include_node) {
           syntax->include = include_node;
+          txn_set(include_node, "path", txn_new_string(path));
           // TX_LOG("include %s\n", path);
         } else {
           // TX_LOG("include not found %s\n", path);
@@ -63,13 +64,13 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // regex
   {
-    char_u *keys[] = {"match", "begin", "end", 0};
+    char_u *keys[] = {"match", "begin", "end", "while", 0};
 
     regex_t **regexes[] = {&syntax->rx_match, &syntax->rx_begin,
-                           &syntax->rx_end};
+                           &syntax->rx_end, &syntax->rx_while};
 
     char_u **regexes_strings[] = {&syntax->rxs_match, &syntax->rxs_begin,
-                                  &syntax->rxs_end};
+                                  &syntax->rxs_end, &syntax->rxs_while};
 
     for (int i = 0;; i++) {
       char_u *key = keys[i];
@@ -105,7 +106,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
                 if (pos) {
                   strcpy(trailer, pos + (strlen(capture_key)));
                   target[pos - target] = 0;
-                  sprintf(tmp, "%s[a-zA-Z0-9]{1,16}%s", target, trailer);
+                  sprintf(tmp, "%s[a-zA-Z0-9]+%s", target, trailer);
                   strcpy(target, tmp);
                   syntax->rx_end_dynamic = true;
                   dirty = true;
@@ -164,9 +165,9 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // captures
   {
-    char_u *keys[] = {"captures", "beginCaptures", "endCaptures", 0};
+    char_u *keys[] = {"captures", "beginCaptures", "endCaptures", "whileCaptures", 0};
     TxSyntaxNode **capture_nodes[] = {
-        &syntax->captures, &syntax->begin_captures, &syntax->end_captures};
+        &syntax->captures, &syntax->begin_captures, &syntax->end_captures, &syntax->while_captures};
     for (int i = 0;; i++) {
       char_u *key = keys[i];
       if (!key)

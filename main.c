@@ -83,17 +83,18 @@ int main(int argc, char **argv) {
 
   // dump(root, 0);
 
-  char temp[1024];
+  char temp[TX_MAX_LINE_LENGTH];
   FILE *fp = fopen(path, "r");
-  while (!feof(fp)) {
-    strcpy(temp, "");
-    fgets(temp, 1024, fp);
-
-    int len = strlen(temp);
-    // printf("%s", temp);
-    tx_parse_line(temp, temp + len + 1, &stack, &processor);
+  if (fp) {
+    while (!feof(fp)) {
+      strcpy(temp, "");
+      fgets(temp, TX_MAX_LINE_LENGTH, fp);
+      int len = strlen(temp);
+      // printf("%s", temp);
+      tx_parse_line(temp, temp + len + 1, &stack, &processor);
+    }
+    fclose(fp);
   }
-  fclose(fp);
 
   TX_TIMER_END
   printf("\nfile %s parsed at %fsecs\n", path, _cpu_time_used);

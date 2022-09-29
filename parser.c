@@ -93,12 +93,12 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
 
         if (strlen(ns) > 0 && ns[0] != '#') {
           target_node = tx_syntax_from_scope(ns);
-          #ifdef _DEBUG_COLLECT
+#ifdef _DEBUG_COLLECT
           _BEGIN_UNDERLINE
-          _BEGIN_COLOR(255,0,0)
+          _BEGIN_COLOR(255, 0, 0)
           printf("global %s %x\n", ns, txn_syntax_value_proxy(target_node));
           _END_FORMAT
-          #endif
+#endif
         } else {
           strncpy(scope, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
         }
@@ -108,11 +108,11 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
               txn_syntax_value(target_node ? target_node : node)->root;
           TxNode *repo_node = txn_get(root, "repository");
           target_node = repo_node ? txn_get(repo_node, scope + 1) : NULL;
-          
-          #ifdef _DEBUG_COLLECT
-          printf("# include [%s] source:%x root:%x repo:%x\n", scope+1,
-            target_node, root, repo_node);
-          #endif
+
+#ifdef _DEBUG_COLLECT
+          printf("# include [%s] source:%x root:%x repo:%x\n", scope + 1,
+                 target_node, root, repo_node);
+#endif
         }
 
         syntax->include = target_node;
@@ -235,8 +235,8 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
 
     if (match.syntax) {
       if (anchor + match.matches[0].start == start) {
-          earliest_match = match;
-          break;
+        earliest_match = match;
+        break;
       }
 
       if (!earliest_match.syntax ||
@@ -288,7 +288,8 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
 
 #ifdef _DEBUG_COLLECT
   char_u *temp = state->matches[0].scope;
-  printf("> %s {%s %s %s}\n", temp, syntax->name, syntax->scope_name, syntax->content_name);
+  printf("> %s {%s %s %s}\n", temp, syntax->name, syntax->scope_name,
+         syntax->content_name);
   printf("+ (%d-%d) ", state->matches[0].start, state->matches[0].end);
   _BEGIN_COLOR(255, 255, 0)
   printf("%s", tx_extract_buffer_range(state->matches[0].buffer,
@@ -347,7 +348,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
   TxSyntax *last_syntax = NULL;
 
-
   while (true) {
     TxMatch *top = tx_state_top(stack);
     TxSyntax *syntax = top->syntax;
@@ -375,7 +375,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     }
 
     if (syntax->rx_while) {
-      if (find_match(anchor, start, end, syntax->rx_while, syntax->rxs_while, &while_match)) {
+      if (find_match(anchor, start, end, syntax->rx_while, syntax->rxs_while,
+                     &while_match)) {
         while_match.syntax = syntax;
       }
       if (!while_match.syntax) {

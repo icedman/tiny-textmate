@@ -11,6 +11,15 @@
             "comment.line.double-slash.js",
             "source.js"
          ]
+      },
+      "4" : {
+         "text" : "js",
+         "scopes" : [
+            "comment.line.double-slash.js"
+         ],
+         "vscode_scopes" : [
+            "comment.line.double-slash.js"
+         ]
       }
    },
    "3": {

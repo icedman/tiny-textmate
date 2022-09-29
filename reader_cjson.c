@@ -165,9 +165,11 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // captures
   {
-    char_u *keys[] = {"captures", "beginCaptures", "endCaptures", "whileCaptures", 0};
+    char_u *keys[] = {"captures", "beginCaptures", "endCaptures",
+                      "whileCaptures", 0};
     TxSyntaxNode **capture_nodes[] = {
-        &syntax->captures, &syntax->begin_captures, &syntax->end_captures, &syntax->while_captures};
+        &syntax->captures, &syntax->begin_captures, &syntax->end_captures,
+        &syntax->while_captures};
     for (int i = 0;; i++) {
       char_u *key = keys[i];
       if (!key)
@@ -298,10 +300,10 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
             cJSON *item = cJSON_GetObjectItem(grammar_item, key);
             if (item && item->valuestring) {
               txn_set(grammar_node, key, txn_new_string(item->valuestring));
-              if (j == 1) {
+              if (strcmp(key, "path") == 0) {
                 relative_path = item->valuestring;
               }
-              if (j == 2) { // scope_name
+              if (strcmp(key, "scopeName") == 0) { // scope_name
                 scope_name = item->valuestring;
               }
             }
@@ -353,17 +355,18 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
                 txn_set(language_node, "filenames", txn_new_array());
 
             // resolve grammar scope_name
-            TxNode *grammar_child = grammars_node->first_child;
-            while (grammar_child) {
-              TxNode *id = txn_get(grammar_child, "language");
-              TxNode *scope = txn_get(grammar_child, "scopeName");
-              if (scope && id && strcmp(id->string_value, language_id) == 0) {
-                txn_set(language_node, "scopeName",
-                        txn_new_string(scope->string_value));
-                break;
-              }
-              grammar_child = grammar_child->next_sibling;
-            }
+            // TxNode *grammar_child = grammars_node->first_child;
+            // while (grammar_child) {
+            //   TxNode *id = txn_get(grammar_child, "language");
+            //   TxNode *scope = txn_get(grammar_child, "scopeName");
+            //   if (scope && id && strcmp(id->string_value, language_id) == 0)
+            //   {
+            //     txn_set(language_node, "scopeName",
+            //             txn_new_string(scope->string_value));
+            //     break;
+            //   }
+            //   grammar_child = grammar_child->next_sibling;
+            // }
 
             // extensions
             cJSON *extensions =

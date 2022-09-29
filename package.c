@@ -22,12 +22,14 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   // printf("%s %s\n", file_name, extension);
 
   TxNode *packages = tx_global_packages();
+  TxNode *grammars = NULL;
   TxNode *language = NULL;
 
   // query languages
   TxNode *child = packages->first_child;
   while (child) {
     TxPackage *pk = txn_package_value(child);
+    grammars = pk->grammars;
     TxNode *languages = pk->languages;
     if (languages) {
       TxNode *lang_child = languages->first_child;
@@ -63,14 +65,29 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
 lang_found:
 
   if (language) {
-    TxNode *scope = txn_get(language, "scopeName");
-    if (scope) {
-      TX_LOG("found %s\n", scope->string_value);
-      return tx_syntax_from_scope(scope->string_value);
+    TxNode *lang_id = txn_get(language, "id");
+    char temp[TX_MAX_LINE_LENGTH];
+    sprintf(temp, "source.%s", lang_id->string_value);
+    TxSyntaxNode *res = tx_syntax_from_scope(temp);
+
+    if (!res && grammars) {
+      TxNode *grammar = grammars->first_child;
+      while (grammar) {
+        TxNode *grammar_language = txn_get(grammar, "language");
+        if (strcmp(grammar_language->string_value, lang_id->string_value) ==
+            0) {
+          TxNode *scope = txn_get(grammar, "scopeName");
+          if (scope) {
+            return tx_syntax_from_scope(scope->string_value);
+          }
+        }
+        grammar = grammar->next_sibling;
+      }
     }
+    return res;
   }
 
-  // printf("not found!\n");
+  // TX_LOG("not found!\n");
   return NULL;
 }
 
@@ -78,7 +95,7 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
   // check global repository
   TxSyntaxNode *syntax_node = txn_get(tx_global_repository(), scope);
   if (syntax_node) {
-    // printf("found at repository!\n");
+    // TX_LOG("found at repository!\n");
     return syntax_node;
   }
 
@@ -116,7 +133,7 @@ void tx_read_package_dir(char *path) {
   char_u base_path[MAX_PATH_LENGTH];
   sprintf(base_path, "%s/", path);
   dp = opendir(base_path);
-  TX_LOG("%s\n", base_path);
+  // TX_LOG("%s\n", base_path);
   if (dp != NULL) {
     while ((ep = readdir(dp)) != NULL) {
       char_u full_path[MAX_PATH_LENGTH] = "";

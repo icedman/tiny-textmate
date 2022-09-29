@@ -224,7 +224,6 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
     return earliest_match;
   }
 
-  bool matched_at_start = false;
   TxNode *p = patterns->first_child;
   while (p) {
     TxMatch match;
@@ -232,38 +231,17 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
 
     TxNode *pattern_node = p;
     TxSyntax *pattern_syntax = txn_syntax_value_proxy(p);
-
-    // if (pattern_syntax->rx_while) {
-    //   // printf("while not yet supported\n");
-    //   p = p->next_sibling;
-    //   continue;
-    // }
-
     match = match_first(anchor, start, end, pattern_syntax);
 
     if (match.syntax) {
       if (anchor + match.matches[0].start == start) {
-        // todo tm-parser (textmate) has a much more elaborate match ranking
-        // if (!earliest_match.syntax || earliest_match.rank < match.rank) {
-          // if (earliest_match.syntax) {
-          //   printf("%d vs %d\n", earliest_match.rank, match.rank);
-          // }
           earliest_match = match;
-          // TODO if we don't break hello.vue test will fail
-          matched_at_start = true;
           break;
-        // }
       }
 
       if (!earliest_match.syntax ||
           earliest_match.matches[0].start > match.matches[0].start) {
         earliest_match = match;
-      }
-
-      // no need to proceed further
-      if (matched_at_start &&
-          match.matches[0].start > earliest_match.matches[0].start) {
-        break;
       }
     }
 
@@ -291,12 +269,6 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
 
   if (find_match(anchor, start, end, regex, syntax->rxs_end, &match)) {
     match.syntax = syntax;
-    // if (syntax->rx_end_dynamic) {
-    //   printf("dynamic match!\n");
-    //   printf("%s", tx_extract_buffer_range(match.matches[0].buffer,
-    //                                        match.matches[0].start,
-    //                                        match.matches[0].end));
-    // }
   }
 
   return match;
@@ -308,11 +280,15 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   TxNode *parent = node->parent;
 
   // todo understand name vs scope_name vs content_name (for begin/end)
-  expand_name(syntax->name, state->matches[0].scope, state);
+  if (syntax->content_name) {
+    expand_name(syntax->content_name, state->matches[0].scope, state);
+  } else if (syntax->name) {
+    expand_name(syntax->name, state->matches[0].scope, state);
+  }
 
 #ifdef _DEBUG_COLLECT
   char_u *temp = state->matches[0].scope;
-  printf("> %s\n", temp);
+  printf("> %s {%s %s %s}\n", temp, syntax->name, syntax->scope_name, syntax->content_name);
   printf("+ (%d-%d) ", state->matches[0].start, state->matches[0].end);
   _BEGIN_COLOR(255, 255, 0)
   printf("%s", tx_extract_buffer_range(state->matches[0].buffer,
@@ -340,8 +316,6 @@ static void collect_captures(char_u *anchor, TxMatch *state,
       if (scope && m->start >= 0) {
         expand_name(scope->string_value, temp, state);
         strncpy(m->scope, temp, TX_SCOPE_NAME_LENGTH);
-        // strncpy(m->scope, tx_extract_buffer_range(anchor, m->start, m->end),
-        //         TX_SCOPE_NAME_LENGTH);
 #ifdef _DEBUG_COLLECT
         printf(":: %d (%d-%d) %s [", capture_idx, m->start, m->end, temp);
         _BEGIN_COLOR(0, 255, 255)

@@ -11,7 +11,7 @@
 
 #define TX_MAX_STACK_DEPTH 64 // json, xml could be very deep
 #define TX_MAX_MATCHES 100    // unbelievably .. cpp has a max of 81 captures
-#define TX_SCOPE_NAME_LENGTH 64
+#define TX_SCOPE_NAME_LENGTH 128 //
 #define TX_MAX_LINE_LENGTH 1024
 
 #ifndef char_u

@@ -1,0 +1,40 @@
+{
+   "1": {
+      "1" : {
+         "text" : "// js",
+         "scopes" : [
+            "punctuation.definition.comment.js",
+            "comment.line.double-slash.js"
+         ],
+         "vscode_scopes" : [
+            "punctuation.definition.comment.js",
+            "comment.line.double-slash.js",
+            "source.js"
+         ]
+      }
+   },
+   "3": {
+      "2" : {
+         "text" : "1",
+         "scopes" : [
+            "constant.numeric.decimal.js",
+            "meta.array.literal.js"
+         ],
+         "vscode_scopes" : [
+            "constant.numeric.decimal.js",
+            "meta.array.literal.js"
+         ]
+      },
+      "19" : {
+         "text" : "=>",
+         "scopes" : [
+            "storage.type.function.arrow.js",
+            "meta.arrow.js"
+         ],
+         "vscode_scopes" : [
+            "storage.type.function.arrow.js",
+            "meta.arrow.js"
+         ]
+      }
+   }
+}

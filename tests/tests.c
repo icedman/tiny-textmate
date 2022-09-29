@@ -161,6 +161,7 @@ static void test_tear_down(void *fixture) {
 static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
                                     (char *)"./tests/data/printf.c",
                                     (char *)"./tests/data/hello.vue",
+                                    (char *)"./tests/data/javascript.js",
                                     (char *)"./tests/data/includes.md",
                                     NULL};
 static MunitParameterEnum syntax_test_params[] = {

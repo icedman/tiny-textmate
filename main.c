@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   }
   for (int i = 1; i < argc - 1; i++) {
     if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-c") == 0 ||
-        strcmp(argv[i], "-r") == 0) {
+        strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-z") == 0) {
       _debug = argv[i][1];
     }
     if (strcmp(argv[i - 1], "-t") == 0) {
@@ -75,6 +75,7 @@ int main(int argc, char **argv) {
   case 'r':
     tx_init_processor(&processor, TxProcessorTypeCollectAndRender);
     break;
+  case 'z':
   default:
     tx_init_processor(&processor, TxProcessorTypeDump);
     break;

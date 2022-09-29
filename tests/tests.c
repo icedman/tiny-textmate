@@ -33,7 +33,6 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
   munit_assert_not_null(syntax->patterns);
   munit_assert_size(((TxNode *)(syntax->patterns))->size, >, 0);
   munit_assert_not_null(syntax->repository);
-  munit_assert_size(((TxNode *)(syntax->repository))->size, >, 0);
 
   {
     TxParserState stack;
@@ -76,39 +75,56 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
             _END_FORMAT
 
             TxNode *scopes = txn_get(c, "scopes");
-            TxNode *ch = scopes->first_child;
-            while (ch) {
-              bool scope_found = false;
-              for (int j = 0;
-                   j < processor.line_parser_state.size && !scope_found; j++) {
-                TxMatch *state = &processor.line_parser_state.states[j];
-                for (int i = 0; i < state->size && !scope_found; i++) {
-                  if (!state->matches[i].scope[0])
-                    continue;
-                  if (state->matches[i].start < 0 || state->matches[i].end < 0)
-                    continue;
-                  if (state->matches[i].start > col ||
-                      state->matches[i].end < col) {
-                    continue;
-                  }
-                  if (strcmp(state->matches[i].scope, ch->string_value) == 0) {
-                    scope_found = true;
+            TxNode *vscode_scopes = txn_get(c, "vscode_scopes");
+            TxNode **test_scopes[] = {
+              scopes,
+              vscode_scopes
+            };
+
+            for(int k=0; k < 2; k++) {
+              TxNode *scopes = test_scopes[k];
+              if (!scopes || !scopes->size) continue;
+
+              TxNode *ch = scopes->first_child;
+              while (ch) {
+                bool scope_found = false;
+                for (int j = 0;
+                     j < processor.line_parser_state.size && !scope_found; j++) {
+                  TxMatch *state = &processor.line_parser_state.states[j];
+                  for (int i = 0; i < state->size && !scope_found; i++) {
+                    if (!state->matches[i].scope[0])
+                      continue;
+                    if (state->matches[i].start < 0 || state->matches[i].end < 0)
+                      continue;
+                    if (state->matches[i].start > col ||
+                        state->matches[i].end < col) {
+                      continue;
+                    }
+                    if (strcmp(state->matches[i].scope, ch->string_value) == 0) {
+                      scope_found = true;
+                    }
                   }
                 }
-              }
 
-              if (scope_found) {
-                _BEGIN_COLOR(0, 255, 0)
-                _PRINT_CHECK("", " ")
-              } else {
-                _BEGIN_COLOR(255, 0, 0)
-                _PRINT_CROSS("", " ")
-              }
-              _END_FORMAT
-              printf("%s\n", ch->string_value);
+                if (scope_found) {
+                  _BEGIN_COLOR(0, 255, 0)
+                  _PRINT_CHECK("", " ")
+                } else {
+                  if (k == 0) {
+                    _BEGIN_COLOR(255, 0, 0)
+                  } else {
+                    _BEGIN_COLOR(255, 255, 0)
+                  }
+                  _PRINT_CROSS("", " ")
+                }
+                _END_FORMAT
+                printf("%s %s\n", ch->string_value, k == 1 ? "[vscode]" : "");
 
-              munit_assert_true(scope_found);
-              ch = ch->next_sibling;
+                if (k == 0) {
+                  munit_assert_true(scope_found);
+                }
+                ch = ch->next_sibling;
+              }
             }
           }
         }
@@ -162,6 +178,7 @@ static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
                                     (char *)"./tests/data/printf.c",
                                     (char *)"./tests/data/hello.vue",
                                     (char *)"./tests/data/javascript.js",
+                                    (char *)"./tests/data/math.html",
                                     (char *)"./tests/data/includes.md",
                                     NULL};
 static MunitParameterEnum syntax_test_params[] = {

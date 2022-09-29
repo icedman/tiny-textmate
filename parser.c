@@ -455,7 +455,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       }
     }
 
-    // prevent and endless loop - caused by inadequate match ranking
+    // prevent possible endless loop
     if (start == end && last_syntax == tx_state_top(stack)->syntax) {
       break;
     }

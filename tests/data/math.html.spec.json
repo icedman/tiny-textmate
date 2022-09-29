@@ -1,0 +1,16 @@
+{
+   "5": {
+      "4" : {
+         "text" : "mfrac",
+         "scopes" : [
+         ],
+         "vscode_scopes" : [
+            "entity.name.tag.html",
+            "meta.tag.structure.math.mfrac.start.html",
+            "meta.element.structure.math.mfrac.html",
+            "meta.element.structure.math.html",
+            "text.html.derivative"
+         ]
+      }
+  }
+}

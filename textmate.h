@@ -9,8 +9,8 @@
 // #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
-#define TX_MAX_STACK_DEPTH 64 // json, xml could be very deep
-#define TX_MAX_MATCHES 100    // unbelievably .. cpp has a max of 81 captures
+#define TX_MAX_STACK_DEPTH 64    // json, xml could be very deep
+#define TX_MAX_MATCHES 100       // unbelievably .. cpp has a max of 81 captures
 #define TX_SCOPE_NAME_LENGTH 128 //
 #define TX_MAX_LINE_LENGTH 1024
 
@@ -94,6 +94,8 @@ typedef struct _TxSyntax {
   char_u *rxs_while;
   bool rx_end_dynamic;
 
+  size_t first_offset;
+  size_t rank;
 } TxSyntax;
 
 typedef struct {

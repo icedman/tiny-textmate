@@ -1,0 +1,40 @@
+{
+   "1": {
+      "1" : {
+         "text" : "<!DOCTYPE",
+         "scopes" : [
+            "punctuation.definition.tag.begin.html"
+         ]
+      }
+   },
+   "2": {
+      "2" : {
+         "text" : "html",
+         "scopes" : [
+            "meta.tag.structure.html.start.html"
+         ]
+      }
+   },
+   "9": {
+      "3" : {
+         "text" : "html",
+         "scopes" : [
+            "meta.tag.structure.html.end.html"
+         ]
+      }
+   },
+   "7": {
+      "10" : {
+         "text" : "p",
+         "scopes" : [
+            "meta.tag.structure.p.start.html"
+         ]
+      },
+      "74" : {
+         "text" : "p",
+         "scopes" : [
+            "meta.tag.structure.p.end.html"
+         ]
+      }
+   }
+}

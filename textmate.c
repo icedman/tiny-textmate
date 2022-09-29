@@ -30,6 +30,7 @@ static uint32_t _nodes_freed = 0;
 static uint32_t _allocated = 0;
 static uint32_t _freed = 0;
 uint32_t _match_execs = 0;
+uint32_t _skipped_match_execs = 0;
 
 static void *tx_malloc_default(size_t size) {
   void *result = malloc(size);
@@ -390,4 +391,5 @@ void tx_stats() {
          _nodes_freed);
   printf("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
   printf("regex matches: %d\n", _match_execs);
+  printf("regex skipped: %d\n", _skipped_match_execs);
 }

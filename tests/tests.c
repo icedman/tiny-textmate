@@ -175,13 +175,11 @@ static void test_tear_down(void *fixture) {
   munit_assert_ptr_equal(fixture, (void *)(uintptr_t)0xdeadbeef);
 }
 
-static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
-                                    (char *)"./tests/data/printf.c",
-                                    (char *)"./tests/data/hello.vue",
-                                    (char *)"./tests/data/javascript.js",
-                                    (char *)"./tests/data/math.html",
-                                    (char *)"./tests/data/includes.md",
-                                    NULL};
+static char *test_syntax_paths[] = {
+    (char *)"./tests/data/main.c",      (char *)"./tests/data/printf.c",
+    (char *)"./tests/data/hello.vue",   (char *)"./tests/data/javascript.js",
+    (char *)"./tests/data/hello.html",  (char *)"./tests/data/math.html",
+    (char *)"./tests/data/includes.md", NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};
 

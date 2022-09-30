@@ -72,13 +72,13 @@ lang_found:
 
     // printf("?%s\n", temp);
 
-    if (!res && grammars) {    
+    if (!res && grammars) {
       TxNode *target_grammar = NULL;
       TxNode *grammar = grammars->first_child;
       while (grammar) {
         TxNode *grammar_language = txn_get(grammar, "language");
-        if (grammar_language && strcmp(grammar_language->string_value, lang_id->string_value) ==
-            0) {
+        if (grammar_language && strcmp(grammar_language->string_value,
+                                       lang_id->string_value) == 0) {
           target_grammar = grammar;
         }
         grammar = grammar->next_sibling;

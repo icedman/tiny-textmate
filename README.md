@@ -93,5 +93,8 @@ do {
 
 * proper 'end' regex - recompile
 * parser state serialize
-* external scope source
 
+# Reference
+
+https://macromates.com/manual/en/language_grammars
+https://www.apeth.com/nonblog/stories/textmatebundle.html

@@ -58,7 +58,7 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
       fgets(temp, TX_MAX_LINE_LENGTH, fp);
       int len = strlen(temp);
       // printf("%s", temp);
-      tx_parse_line(temp, temp + len + 1, &stack, &processor);
+      tx_parse_line(temp, temp + len, &stack, &processor);
 
       char nz[32];
       sprintf(nz, "%d", row);
@@ -120,7 +120,11 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
                   _PRINT_CROSS("", " ")
                 }
                 _END_FORMAT
+                if (k == 1) {
+                  _BEGIN_COLOR(0x50, 0x50, 0x50)
+                }
                 printf("%s %s\n", ch->string_value, k == 1 ? "[vscode]" : "");
+                _END_FORMAT
 
                 if (k == 0) {
                   munit_assert_true(scope_found);
@@ -238,12 +242,15 @@ static void test_tear_down(void *fixture) {
   munit_assert_ptr_equal(fixture, (void *)(uintptr_t)0xdeadbeef);
 }
 
-static char *test_syntax_paths[] = {
-    (char *)"./tests/data/main.c",      (char *)"./tests/data/printf.c",
-    (char *)"./tests/data/hello.vue",   (char *)"./tests/data/javascript.js",
-    (char *)"./tests/data/hello.html",  (char *)"./tests/data/math.html",
-    (char *)"./tests/data/page-list.njk",
-    (char *)"./tests/data/includes.md", NULL};
+static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
+                                    (char *)"./tests/data/printf.c",
+                                    (char *)"./tests/data/hello.vue",
+                                    (char *)"./tests/data/javascript.js",
+                                    (char *)"./tests/data/hello.html",
+                                    (char *)"./tests/data/math.html",
+                                    (char *)"./tests/data/page-list.njk",
+                                    (char *)"./tests/data/includes.md",
+                                    NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};
 

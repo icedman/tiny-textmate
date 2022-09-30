@@ -38,8 +38,9 @@ static void dump_open_tag(TxParseProcessor *self, TxMatch *state) {
   printf("\n");
 
   _END_FORMAT
-  printf("[%s] (%d-%d)\n", state->matches[0].scope, state->matches[0].start,
-         state->matches[0].end);
+  printf("[%s] (%d-%d) while:%x\n", state->matches[0].scope,
+         state->matches[0].start, state->matches[0].end,
+         state->syntax->rx_while);
 }
 
 static void dump_close_tag(TxParseProcessor *self, TxMatch *state) {

@@ -4,6 +4,7 @@
 
 // optimization
 // #define TX_DISCARD_EARLY
+// #define TX_DEBUG_MATCHES
 
 extern uint32_t _match_execs;
 extern uint32_t _skipped_match_execs;
@@ -112,7 +113,8 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
     if (syntax->include) {
       TxSyntaxNode *include_node = syntax->include;
       syntax = txn_syntax_value_proxy(include_node);
-      // printf("include: %s\n", txn_get(syntax->root, "scopeName")->string_value);
+      // printf("include: %s\n", txn_get(syntax->root,
+      // "scopeName")->string_value);
     }
   }
 
@@ -169,8 +171,8 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
     printf("matches %s (%d-%d) ", pattern, state->matches[0].start,
            state->matches[0].end);
     _BEGIN_COLOR(255, 0, 255)
-    printf(tx_extract_buffer_range(anchor, state->matches[0].start,
-                                   state->matches[0].end));
+    printf("%s", tx_extract_buffer_range(anchor, state->matches[0].start,
+                                         state->matches[0].end));
     printf("\n");
     _END_FORMAT
   }
@@ -188,22 +190,23 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   TxMatch match;
   tx_init_match(&match);
 
-#ifdef TX_DISCARD_EARLY
-  if (syntax->anchor == anchor && (syntax->rx_match || syntax->rx_begin)) {
-    // discard by possible offset result or rank
-    if (current_offset > 0 && syntax->offset > 0) {
-      if (syntax->offset > current_offset) {
-        _skipped_match_execs++;
-        return match;
-      }
-      if (syntax->offset == current_offset &&
-          syntax->rank < current_rank) {
-        _skipped_match_execs++;
-        return match;
-      }
-    }
-  }
-#endif
+  // optimize later
+  // #ifdef TX_DISCARD_EARLY
+  //   if (syntax->anchor == anchor && (syntax->rx_match || syntax->rx_begin)) {
+  //     // discard by possible offset result or rank
+  //     if (current_offset > 0 && syntax->offset > 0) {
+  //       if (syntax->offset > current_offset) {
+  //         _skipped_match_execs++;
+  //         return match;
+  //       }
+  //       if (syntax->offset == current_offset &&
+  //           syntax->rank < current_rank) {
+  //         _skipped_match_execs++;
+  //         return match;
+  //       }
+  //     }
+  //   }
+  // #endif
 
   if (syntax->rx_match && find_match(anchor, start, end, syntax->rx_match,
                                      syntax->rxs_match, &match)) {
@@ -341,16 +344,43 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
   TxSyntax *last_syntax = NULL;
 
+  TxMatch while_match;
+  tx_init_match(&while_match);
+
+  for (int k = 0; k < stack->size - 1 && stack->size > 1; k++) {
+    int idx = stack->size - k - 1;
+    if (idx - 1 == 0)
+      break;
+    TxMatch *m = &stack->states[idx];
+    TxSyntax *m_syntax = m->syntax;
+    if (m_syntax->rx_while) {
+      if (m->matches[0].start != start - anchor) {
+        if (!find_match(anchor, start, end, m_syntax->rx_while,
+                        m_syntax->rxs_while, &while_match)) {
+          while_match.syntax = m_syntax;
+          stack->size = idx - 1; // pop until this match
+          goto end_line;
+        }
+      }
+      break;
+    }
+  }
+
+  // if (!stack->size) return;
+
   while (true) {
     TxMatch *top = tx_state_top(stack);
     TxSyntax *syntax = top->syntax;
+
+    // printf(">>%d %x\n", stack->size, top->syntax);
+    // TxNode *r = (TxNode*)(syntax->root);
+    // TxNode *n = txn_get(r, "scopeName");
+    // printf("stack size: %d %s\n", stack->size, n ? n->string_value : NULL);
 
     TxMatch pattern_match;
     tx_init_match(&pattern_match);
     TxMatch end_match;
     tx_init_match(&end_match);
-    TxMatch while_match;
-    tx_init_match(&while_match);
 
     end = buffer_end;
 
@@ -360,20 +390,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
     if (syntax->rx_end || syntax->rx_end_dynamic) {
       end_match = match_end(anchor, start, end, syntax);
-    }
-
-    if (syntax->rx_while) {
-      if (find_match(anchor, start, end, syntax->rx_while, syntax->rxs_while,
-                     &while_match)) {
-        while_match.syntax = syntax;
-      }
-      if (!while_match.syntax) {
-        if (processor && processor->close_tag) {
-          processor->close_tag(processor, top);
-        }
-        tx_state_pop(stack);
-        continue;
-      }
     }
 
     if (end_match.syntax &&
@@ -420,7 +436,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
 #ifdef TX_DEBUG_COLLECT
         printf("{{{{\n");
-        printf(tx_extract_buffer_range(anchor, pattern_match.matches[0].start,
+        printf("%s",
+               tx_extract_buffer_range(anchor, pattern_match.matches[0].start,
                                        pattern_match.matches[0].end));
         printf("\n");
 #endif
@@ -452,6 +469,8 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     start = end;
     last_syntax = tx_state_top(stack)->syntax;
   }
+
+end_line:
 
   if (processor && processor->line_end) {
     processor->line_end(processor);

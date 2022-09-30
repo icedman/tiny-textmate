@@ -57,10 +57,12 @@ int main(int argc, char **argv) {
   if (scope_name) {
     root = tx_syntax_from_scope(scope_name);
   } else {
-    root = grammar_path ? txn_load_syntax(grammar_path) : tx_syntax_from_path(path);
+    root = grammar_path ? txn_load_syntax(grammar_path)
+                        : tx_syntax_from_path(path);
     if (grammar_path) {
       TxNode *scope = txn_get(root, "scopeName");
-      txn_set(tx_global_repository(), scope ? scope->string_value : "source.xxx", root);
+      txn_set(tx_global_repository(),
+              scope ? scope->string_value : "source.xxx", root);
     }
   }
 
@@ -102,7 +104,7 @@ int main(int argc, char **argv) {
       fgets(temp, TX_MAX_LINE_LENGTH, fp);
       int len = strlen(temp);
       // printf("%s", temp);
-      tx_parse_line(temp, temp + len + 1, &stack, &processor);
+      tx_parse_line(temp, temp + len, &stack, &processor);
     }
     fclose(fp);
   }

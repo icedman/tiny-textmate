@@ -56,14 +56,27 @@ int main(int argc, char **argv) {
   // char temp[] = "the lazy quick brown fox";
   // regex_t* rx = compile_pattern("(lazy)\\s(quick)");
 
-  {
+  if (false) {
     char temp[] = "int argc, char **argv) {";
     printf("%s\n", temp);
     // regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
     regex_t *rx = compile_pattern(
         "(?<=(?:[a-zA-Z_0-9] "
         "|[&*>\\]\\)]))\\s*([a-zA-Z_]\\w*)\\s*(?=(?:\\[\\]\\s*)?(?:,|\\)))");
-    find_match(temp, temp + strlen(temp), rx);
+    if (find_match(temp, temp + strlen(temp), rx)) {
+      printf("found\n");
+    }
+    onig_free(rx);
+  }
+
+  if (true) {
+    char temp[] = "```xx";
+    printf("%s\n", temp);
+    // regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
+    regex_t *rx = compile_pattern("(^|\\G)(?!\\s*([`~]{3,})\\s*$)");
+    if (find_match(temp, temp + strlen(temp), rx)) {
+      printf("found\n");
+    }
     onig_free(rx);
   }
 

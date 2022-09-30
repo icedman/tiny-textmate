@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
-// #define TX_SYNTAX_VERBOSE_REGEX
+#define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TX_MAX_STACK_DEPTH 64    // json, xml could be very deep

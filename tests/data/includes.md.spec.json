@@ -22,5 +22,32 @@
             "keyword.control.loop.js"
          ]
       }
+  },
+   "9": {
+      "3" : {
+         "text" : "back to markdown",
+         "scopes" : [
+            "markup.heading.markdown"
+         ],
+         "vscode_scopes" : [
+            "entity.name.section.markdown",
+            "heading.1.markdown",
+            "markup.heading.markdown"
+         ]
+      }
+  },
+   "12": {
+      "1" : {
+         "text" : "echo",
+         "scopes" : [
+            "support.function.builtin.shell"
+         ],
+         "vscode_scopes" : [
+            "support.function.builtin.shell",
+            "meta.embedded.block.shellscript",
+            "markup.fenced_code.block.markdown",
+            "text.html.markdown"
+         ]
+      }
   }
 }

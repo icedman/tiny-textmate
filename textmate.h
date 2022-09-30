@@ -94,7 +94,9 @@ typedef struct _TxSyntax {
   char_u *rxs_while;
   bool rx_end_dynamic;
 
-  size_t first_offset;
+  // match cache
+  char_u *anchor;
+  size_t offset;
   size_t rank;
 } TxSyntax;
 

@@ -1,0 +1,330 @@
+{
+   "$schema" : "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+   "comment" : "Better Nunjucks syntax highlighting support for Visual Studio Code",
+   "fileTypes" : [
+      "njk",
+      "nunjucks",
+      "html",
+      "md"
+   ],
+   "foldingStartMarker" : "^{%-?\\s*(if|for|asyncEach|asyncAll|macro|set|block|filter|raw|call)[^(%})]+-?%}",
+   "foldingStopMarker" : "^{%-?\\s*(endif|endfor|endeach|endall|endmacro|endset|endblock|endfilter|endraw|endcall)[^(%})]+-?%}",
+   "injectionSelector" : "L:text.html -meta.embedded -comment , text.html.markdown -comment",
+   "name" : "Better Nunjucks Syntax Support",
+   "patterns" : [
+      {
+         "include" : "#comments"
+      },
+      {
+         "include" : "#front-matter"
+      },
+      {
+         "include" : "#template-tags"
+      },
+      {
+         "include" : "#template-vars"
+      }
+   ],
+   "repository" : {
+      "comments" : {
+         "begin" : "{#",
+         "end" : "#}",
+         "name" : "comment.block.njk"
+      },
+      "constant-boolean" : {
+         "match" : "(false|true|nil|null|empty|blank)",
+         "name" : "constant.language.njk"
+      },
+      "constant-characters" : {
+         "captures" : {
+            "1" : {
+               "name" : "punctuation.definition.entity.html"
+            },
+            "3" : {
+               "name" : "punctuation.definition.entity.html"
+            }
+         },
+         "match" : "(&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)",
+         "name" : "constant.character.entity.njk"
+      },
+      "constant-numeric" : {
+         "match" : "(-|\\+)?\\s*[0-9]+(\\.[0-9]+)?",
+         "name" : "constant.numeric.njk"
+      },
+      "entity-name-tag" : {
+         "captures" : {
+            "1" : {
+               "name" : "entity.name.tag.njk"
+            }
+         },
+         "match" : "(((?<={%)|(?<={%-))\\s*(\\w+))"
+      },
+      "front-matter" : {
+         "begin" : "^---[a-zA-Z0-9_-]*(?=\\s*\\n)",
+         "beginCaptures" : {
+            "0" : {
+               "name" : "punctuation.definition.tag.begin.njk"
+            }
+         },
+         "contentName" : "source.yaml",
+         "end" : "---(?=\\s*\\n)",
+         "endCaptures" : {
+            "0" : {
+               "name" : "punctuation.definition.tag.end.njk"
+            }
+         },
+         "name" : "meta.embedded.block.frontmatter.njk",
+         "patterns" : [
+            {
+               "include" : "source.yaml"
+            }
+         ]
+      },
+      "include-tag" : {
+         "match" : "((?<=include)|(?<=include_relative))\\s[^{,'\"]+?\\s+",
+         "name" : "string.quoted.njk"
+      },
+      "invalid-ampersand" : {
+         "match" : "&",
+         "name" : "invalid.illegal.bad-ampersand.njk"
+      },
+      "invalid-array" : {
+         "captures" : {
+            "2" : {
+               "name" : "invalid.illegal.filter.njk"
+            },
+            "3" : {
+               "name" : "invalid.illegal.filter.njk"
+            }
+         },
+         "match" : "(\\[)(\\|)(?=[^\\]]*)(?=\\])"
+      },
+      "invalid-conditions" : {
+         "captures" : {
+            "3" : {
+               "name" : "invalid.illegal.operator.njk"
+            }
+         },
+         "match" : "(?=if|elsif)\\s*[^%}]+\\s(in)\\s"
+      },
+      "invalid-operators" : {
+         "match" : "(?<=\\s)(\\+|\\-|\\/|\\*)(?=\\s)",
+         "name" : "invalid.illegal.filter.njk"
+      },
+      "keyword-control" : {
+         "match" : "(?<=\\s)(with|offset\\:|limit\\:)(?=\\s)",
+         "name" : "keyword.control.njk"
+      },
+      "keyword-control-conditional" : {
+         "name" : "keyword.control.conditional.njk"
+      },
+      "keyword-operator-assignment" : {
+         "match" : "/=",
+         "name" : "keyword.operator.assignment.augmented.njk"
+      },
+      "keyword-operators" : {
+         "match" : "\\s+(and|or|not|import|as|with|in|ignore|((\\!|\\=|\\<|\\>)\\=))\\s+",
+         "name" : "keyword.operator.njk"
+      },
+      "object-properties" : {
+         "match" : "(?<=\\w.)(?<=\\w.)\\b\\w+?\\b\\s+?",
+         "name" : "variable.parameter.njk"
+      },
+      "string-quoted-double" : {
+         "begin" : "\"",
+         "end" : "\"",
+         "name" : "string.quoted.double.njk"
+      },
+      "string-quoted-single" : {
+         "begin" : "'",
+         "end" : "'",
+         "name" : "string.quoted.single.njk"
+      },
+      "support-class" : {
+         "comment" : "custom filters and common collection keywords for 11ty and other ssgs –– MIGHT REMOVE THIS OR MAKE IT MORE UNIVERSAL",
+         "match" : "\\b(site|meta|slugify|log|getPreviousCollectionItem|getNedtCollectionItem|getCollectionItem|addAllPagesToCollections|as|with|article|assets|block|blog|blogs|verbatim|canonical_url|cart|checkout|collection|collections|current|customer|date|discount|form|image|item|items|nunjucks|link|meta|next|page|title|pages|paginate|parent|post|posts|previous|product|products|request|search|site|tags|taxonomy|template|theme|themes|url|variant)\\b",
+         "name" : "support.class.njk"
+      },
+      "support-constant" : {
+         "match" : "\\b(default|d|first|last)\\b",
+         "name" : "support.constant.njk"
+      },
+      "support-function" : {
+         "match" : "\\b(abs|batch|capitalize|center|dictsort|dump|escape|float|forceecape|groupby|indent|int|join|length|list|lower|nl2br|random|reject|rejectattr|replace|reverse|round|safe|select|slice|sort|string|striptags|sum|title|trim|truncate|upper|urlize|wordcount|range|joiner|cycler)\\b",
+         "name" : "support.function.njk"
+      },
+      "support-function-with-args" : {
+         "match" : "\\|\\s+(?![\\.0-9])[a-zA-Z0-9_-]+\\:\\s+",
+         "name" : "support.function.with-args.njk"
+      },
+      "support-function-without-args" : {
+         "match" : "\\|\\s+(?![\\.0-9])[a-zA-Z0-9_-]+\\s+",
+         "name" : "support.function.without-args.njk"
+      },
+      "support-variable" : {
+         "match" : "\\b(arr|attr|all|reverse|caseSens|import|data|size|alias|filter|resolve|reverse|page|post|collections|url|fileSlug|filePathStem|inputPath|outputPath|outputFileExtension)\\b",
+         "name" : "support.variable.njk"
+      },
+      "template-tags" : {
+         "begin" : "({%)(-)?",
+         "beginCaptures" : {
+            "1" : {
+               "name" : "punctuation.definition.tag.begin.njk"
+            },
+            "2" : {
+               "name" : "keyword.other.whitespace.njk"
+            }
+         },
+         "end" : "(-)?(%})",
+         "endCaptures" : {
+            "1" : {
+               "name" : "keyword.other.whitespace.njk"
+            },
+            "2" : {
+               "name" : "punctuation.definition.tag.end.njk"
+            }
+         },
+         "name" : "punctuation.tag.njk",
+         "patterns" : [
+            {
+               "include" : "#constant-characters"
+            },
+            {
+               "include" : "#constant-boolean"
+            },
+            {
+               "include" : "#constant-numeric"
+            },
+            {
+               "include" : "#constant-boolean"
+            },
+            {
+               "include" : "#entity-name-tag"
+            },
+            {
+               "include" : "#entity-other-attribute-name"
+            },
+            {
+               "include" : "#include-tag"
+            },
+            {
+               "include" : "#invalid-ampersand"
+            },
+            {
+               "include" : "#invalid-array"
+            },
+            {
+               "include" : "#invalid-conditions"
+            },
+            {
+               "include" : "#invalid-operators"
+            },
+            {
+               "include" : "#keyword-control"
+            },
+            {
+               "include" : "#keyword-operators"
+            },
+            {
+               "include" : "#keyword-operator-assignment"
+            },
+            {
+               "include" : "#string-quoted-double"
+            },
+            {
+               "include" : "#string-quoted-single"
+            },
+            {
+               "include" : "#support-class"
+            },
+            {
+               "include" : "#support-function"
+            },
+            {
+               "include" : "#support-variable"
+            },
+            {
+               "include" : "#support-constant"
+            },
+            {
+               "include" : "#variable-parameter"
+            },
+            {
+               "include" : "#variable-other"
+            }
+         ]
+      },
+      "template-vars" : {
+         "begin" : "({{)(-)?",
+         "beginCaptures" : {
+            "1" : {
+               "name" : "punctuation.definition.tag.begin.njk"
+            },
+            "2" : {
+               "name" : "keyword.other.whitespace.njk"
+            }
+         },
+         "end" : "(-)?(}})",
+         "endCaptures" : {
+            "1" : {
+               "name" : "keyword.other.whitespace.njk"
+            },
+            "2" : {
+               "name" : "punctuation.definition.tag.end.njk"
+            }
+         },
+         "name" : "punctuation.output.njk",
+         "patterns" : [
+            {
+               "include" : "#constant-characters"
+            },
+            {
+               "include" : "#object-properties"
+            },
+            {
+               "include" : "#string-quoted-double"
+            },
+            {
+               "include" : "#string-quoted-single"
+            },
+            {
+               "include" : "#support-class"
+            },
+            {
+               "include" : "#support-function"
+            },
+            {
+               "include" : "#support-variable"
+            },
+            {
+               "include" : "#support-function-with-args"
+            },
+            {
+               "include" : "#support-function-without-args"
+            },
+            {
+               "include" : "#var-support-variable"
+            },
+            {
+               "include" : "#variable-parameter"
+            },
+            {
+               "include" : "#variable-other"
+            }
+         ]
+      },
+      "var-support-variable" : {
+         "match" : "(?<=\\.)\\w+\\b",
+         "name" : "support.variable.njk"
+      },
+      "variable-other" : {
+         "match" : "\\w+",
+         "name" : "variable.other.njk"
+      },
+      "variable-parameter" : {
+         "match" : "((?<=\\w\\:\\s)\\w+)",
+         "name" : "variable.parameter.njk"
+      }
+   },
+   "scopeName" : "source.njk"
+}

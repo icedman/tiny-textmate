@@ -68,22 +68,35 @@ lang_found:
     TxNode *lang_id = txn_get(language, "id");
     char temp[TX_MAX_LINE_LENGTH];
     sprintf(temp, "source.%s", lang_id->string_value);
-    TxSyntaxNode *res = tx_syntax_from_scope(temp);
+    TxSyntaxNode *res = NULL;
 
-    if (!res && grammars) {
+    // printf("?%s\n", temp);
+
+    if (!res && grammars) {    
+      TxNode *target_grammar = NULL;
       TxNode *grammar = grammars->first_child;
       while (grammar) {
         TxNode *grammar_language = txn_get(grammar, "language");
-        if (strcmp(grammar_language->string_value, lang_id->string_value) ==
+        if (grammar_language && strcmp(grammar_language->string_value, lang_id->string_value) ==
             0) {
-          TxNode *scope = txn_get(grammar, "scopeName");
-          if (scope) {
-            return tx_syntax_from_scope(scope->string_value);
-          }
+          target_grammar = grammar;
         }
         grammar = grammar->next_sibling;
       }
+
+      if (target_grammar) {
+        TxNode *scope = txn_get(target_grammar, "scopeName");
+        if (scope) {
+          res = tx_syntax_from_scope(scope->string_value);
+          // printf(">>%s\n", scope->string_value);
+        }
+      }
+
+      if (!res) {
+        res = tx_syntax_from_scope(temp);
+      }
     }
+
     return res;
   }
 
@@ -123,6 +136,8 @@ TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
     }
     child = child->next_sibling;
   }
+
+  printf("not found!\n");
   return NULL;
 }
 

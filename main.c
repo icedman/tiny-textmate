@@ -19,10 +19,12 @@ int main(int argc, char **argv) {
   char *default_grammar_path = NULL;
   char *grammar_path = default_grammar_path;
 
+  char *scope_name = NULL;
+
   char *default_theme_path = "./samples/monokai.json";
   char *theme_path = default_theme_path;
 
-  char *default_extensions_path = "/home/iceman/.editor/extensions";
+  char *default_extensions_path = "./tests/data/extensions";
   char *extensions_path = default_extensions_path;
 
   if (argc > 1) {
@@ -36,6 +38,9 @@ int main(int argc, char **argv) {
     if (strcmp(argv[i - 1], "-t") == 0) {
       theme_path = argv[i];
     }
+    if (strcmp(argv[i - 1], "-s") == 0) {
+      scope_name = argv[i];
+    }
     if (strcmp(argv[i - 1], "-l") == 0) {
       grammar_path = argv[i];
     }
@@ -48,10 +53,15 @@ int main(int argc, char **argv) {
 
   TxThemeNode *theme = txn_load_theme(theme_path);
 
-  TxSyntaxNode *root =
-      grammar_path ? txn_load_syntax(grammar_path) : tx_syntax_from_path(path);
-  if (grammar_path) {
-    txn_set(tx_global_repository(), "source.x", root);
+  TxSyntaxNode *root = NULL;
+  if (scope_name) {
+    root = tx_syntax_from_scope(scope_name);
+  } else {
+    root = grammar_path ? txn_load_syntax(grammar_path) : tx_syntax_from_path(path);
+    if (grammar_path) {
+      TxNode *scope = txn_get(root, "scopeName");
+      txn_set(tx_global_repository(), scope ? scope->string_value : "source.xxx", root);
+    }
   }
 
   // dump(theme, 0);

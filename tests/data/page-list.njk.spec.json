@@ -1,0 +1,45 @@
+{
+   "2": {
+      "1" : {
+         "text" : "pagination",
+         "scopes" : [
+            "entity.name.tag.yaml",
+            "meta.embedded.block.frontmatter"
+         ],
+         "vscode_scopes" : [
+            "entity.name.tag.yaml",
+            "string.unquoted.plain.out.yaml",
+            "meta.embedded.block.frontmatter",
+            "text.html.njk"
+         ]
+      }
+  },
+  "9": {
+      "2" : {
+         "text" : "table",
+         "scopes" : [
+            "entity.name.tag.html",
+            "meta.tag.structure.table.start.html"
+         ],
+         "vscode_scopes" : [
+            "entity.name.tag.html",
+            "meta.tag.structure.table.start.html",
+            "text.html.njk"
+         ]
+      }
+  },
+  "15": {
+      "5" : {
+         "text" : "for",
+         "scopes" : [
+            "keyword.control.njk",
+            "comment.block.njk"
+         ],
+         "vscode_scopes" : [
+            "keyword.control.njk",
+            "comment.block.njk",
+            "text.html.njk"
+         ]
+      }
+  }
+}

@@ -3,7 +3,7 @@
 #include <string.h>
 
 // optimization
-#define TX_DISCARD_EARLY
+// #define TX_DISCARD_EARLY
 
 extern uint32_t _match_execs;
 extern uint32_t _skipped_match_execs;
@@ -112,7 +112,7 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
     if (syntax->include) {
       TxSyntaxNode *include_node = syntax->include;
       syntax = txn_syntax_value_proxy(include_node);
-      // printf("include: %x\n", syntax);
+      // printf("include: %s\n", txn_get(syntax->root, "scopeName")->string_value);
     }
   }
 
@@ -189,14 +189,14 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   tx_init_match(&match);
 
 #ifdef TX_DISCARD_EARLY
-  if (syntax->rx_match || syntax->rx_begin) {
+  if (syntax->anchor == anchor && (syntax->rx_match || syntax->rx_begin)) {
     // discard by possible offset result or rank
-    if (current_offset > 0 && syntax->first_offset > 0) {
-      if (syntax->first_offset > current_offset) {
+    if (current_offset > 0 && syntax->offset > 0) {
+      if (syntax->offset > current_offset) {
         _skipped_match_execs++;
         return match;
       }
-      if (syntax->first_offset == current_offset &&
+      if (syntax->offset == current_offset &&
           syntax->rank < current_rank) {
         _skipped_match_execs++;
         return match;
@@ -208,12 +208,14 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   if (syntax->rx_match && find_match(anchor, start, end, syntax->rx_match,
                                      syntax->rxs_match, &match)) {
     match.syntax = syntax;
-    syntax->first_offset = match.matches[0].start - (start - anchor);
+    syntax->offset = match.matches[0].start - (start - anchor);
+    syntax->anchor = anchor;
   } else if (syntax->rx_begin &&
              find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_begin,
                         &match)) {
     match.syntax = syntax;
-    syntax->first_offset = match.matches[0].start - (start - anchor);
+    syntax->offset = match.matches[0].start - (start - anchor);
+    syntax->anchor = anchor;
     match.rank++; // begin is preferred over match?
   } else if (syntax->rx_end || syntax->rx_end_dynamic || syntax->rx_while) {
     // skip

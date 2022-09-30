@@ -44,7 +44,7 @@ executable('tiny',
   dependencies: [ onigmo_dep ]
 )
 
-executable('test_syntax',
+executable('sample_syntax',
   'tests/syntax.c',
   'tests/dump.c',
   cjson_files,

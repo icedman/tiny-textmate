@@ -11,6 +11,7 @@
 #endif
 
 #define EXTENSIONS_PATH "./tests/data/extensions"
+
 #define _PRINT_CHECK(lead, tail) printf("%s\xE2\x9C\x94%s", lead, tail);
 #define _PRINT_CROSS(lead, tail) printf("%s\xE2\x9C\x95%s", lead, tail);
 
@@ -46,7 +47,7 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
     TxNode *spec = txn_load_json(spec_path);
 
     _BEGIN_COLOR(255, 255, 0)
-    printf("---[ %s ]---\n", path);
+    printf("\n---[ %s ]---\n", path);
     _END_FORMAT
 
     char temp[TX_MAX_LINE_LENGTH];
@@ -160,6 +161,68 @@ static MunitResult test_theme(const MunitParameter params[], void *data) {
   (void)params;
   (void)data;
 
+  printf("\n");
+
+  return MUNIT_OK;
+}
+
+static MunitResult test_parse(const MunitParameter params[], void *data) {
+  (void)params;
+  (void)data;
+
+  tx_read_package_dir(EXTENSIONS_PATH);
+
+  const char *path = "./tests/data/tinywl.c";
+
+  _BEGIN_COLOR(255, 255, 0)
+  printf("\n---[ %s ]---\n", path);
+  _END_FORMAT
+
+  TxSyntaxNode *root = tx_syntax_from_path(path);
+
+  TxParserState stack;
+  tx_init_parser_state(&stack, txn_syntax_value(root));
+
+  TxParseProcessor processor;
+  tx_init_processor(&processor, TxProcessorTypeCollect);
+
+  TX_TIMER_BEGIN
+  size_t lines = 0;
+
+  char temp[TX_MAX_LINE_LENGTH];
+  FILE *fp = fopen(path, "r");
+  if (fp) {
+    while (!feof(fp)) {
+      strcpy(temp, "");
+      fgets(temp, TX_MAX_LINE_LENGTH, fp);
+      int len = strlen(temp);
+      // printf("%s", temp);
+      tx_parse_line(temp, temp + len + 1, &stack, &processor);
+      lines++;
+    }
+    fclose(fp);
+  }
+
+  TX_TIMER_END
+
+  // free all allocations
+  tx_shutdown();
+
+  tx_stats();
+
+  bool fast_enough = _cpu_time_used < 1.5;
+  if (fast_enough) {
+    _BEGIN_COLOR(0, 255, 0)
+    _PRINT_CHECK("", " ")
+  } else {
+    _BEGIN_COLOR(255, 0, 0)
+    _PRINT_CROSS("", " ")
+  }
+  _END_FORMAT
+
+  printf("parse %d lines done in %f\n", lines, _cpu_time_used);
+  munit_assert_true(fast_enough);
+
   return MUNIT_OK;
 }
 
@@ -179,6 +242,7 @@ static char *test_syntax_paths[] = {
     (char *)"./tests/data/main.c",      (char *)"./tests/data/printf.c",
     (char *)"./tests/data/hello.vue",   (char *)"./tests/data/javascript.js",
     (char *)"./tests/data/hello.html",  (char *)"./tests/data/math.html",
+    (char *)"./tests/data/page-list.njk",
     (char *)"./tests/data/includes.md", NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};
@@ -190,6 +254,8 @@ static MunitTest test_suite_tests[] = {
      MUNIT_TEST_OPTION_NONE, syntax_test_params},
     {(char *)"/tests/theme", test_theme, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
+    // {(char *)"/tests/parse", test_parse, test_setup, test_tear_down,
+    //  MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
 static const MunitSuite test_suite = {(char *)"", test_suite_tests, NULL,
@@ -199,7 +265,6 @@ int main(int argc, char *argv) {
   TX_TIMER_BEGIN
 
   munit_suite_main(&test_suite, (void *)"µnit", argc, argv);
-  tx_stats();
 
   TX_TIMER_END
   printf("\ntests done at %fsecs\n", _cpu_time_used);

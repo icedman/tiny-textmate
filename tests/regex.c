@@ -69,11 +69,31 @@ int main(int argc, char **argv) {
     onig_free(rx);
   }
 
-  if (true) {
+  if (false) {
     char temp[] = "```xx";
     printf("%s\n", temp);
     // regex_t* rx = compile_pattern("%|\\*|/|-|\\+");
     regex_t *rx = compile_pattern("(^|\\G)(?!\\s*([`~]{3,})\\s*$)");
+    if (find_match(temp, temp + strlen(temp), rx)) {
+      printf("found\n");
+    }
+    onig_free(rx);
+  }
+
+  if (false) {
+    char temp[] = "**italic**";
+    printf("%s\n", temp);
+    regex_t *rx = compile_pattern("(?<=\\S)(\\*\\*)");
+    if (find_match(temp, temp + strlen(temp), rx)) {
+      printf("found\n");
+    }
+    onig_free(rx);
+  }
+
+  if (true) {
+    char temp[] = "**bold**";
+    printf("%s\n", temp);
+    regex_t *rx = compile_pattern("(?<=\\S)(\\*\\*)");
     if (find_match(temp, temp + strlen(temp), rx)) {
       printf("found\n");
     }

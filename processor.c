@@ -100,7 +100,10 @@ static void collect_close_tag(TxParseProcessor *self, TxMatch *state) {
   for (int j = line_parser_state->size; j > 0; j--) {
     TxMatch *m = &line_parser_state->states[j - 1];
     if (m->syntax == state->syntax) {
+      // printf("!! (%d-%d) (%d-%d)\n", m->matches[0].start, m->matches[0].end,
+      //     state->matches[0].start, state->matches[0].end);
       m->matches[0].end = state->matches[0].end;
+      break;
     }
   }
 }

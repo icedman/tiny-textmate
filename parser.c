@@ -267,17 +267,80 @@ static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
   return earliest_match;
 }
 
+typedef struct {
+  char *problem;
+  char *correction;
+} correction_map_t;
+
+static const correction_map_t correction_map[] = {
+  {"**", "\\*\\*"},
+  {"*i", "\\*i"},
+  {"*", "\\*"},
+  NULL
+};
+
 static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
-                         TxSyntax *syntax) {
+                         TxSyntax *syntax, TxMatch *state) {
   TxMatch match;
   tx_init_match(&match);
 
   regex_t *regex = syntax->rx_end;
 
-  // if (syntax->rx_end_dynamic && !syntax->rx_end) {
-  //   printf(">%s\n", syntax->rxs_end);
-  //   printf("dynamic end - not yet implemented\n");
-  // }
+  if (syntax->rx_end_dynamic) {
+#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
+    if (syntax->rx_end) {
+      onig_free(syntax->rx_end);
+      syntax->rx_end = NULL;
+    }
+    int len = strlen(syntax->rxs_end) + 128;
+    char_u *target = tx_malloc(len * sizeof(char_u));
+    char_u *tmp = tx_malloc(len * sizeof(char_u));
+    char_u *trailer = tx_malloc(len * sizeof(char_u));
+    char_u capture_key[8];
+    char_u replacement_key[32];
+    char_u replacement[TX_SCOPE_NAME_LENGTH];
+
+    strcpy(target, syntax->rxs_end);
+
+    bool dirty = true;
+    while (dirty) {
+      dirty = false;
+      for (int j = 0; j < TX_MAX_MATCHES; j++) {
+        sprintf(capture_key, "\\%d", j);
+        sprintf(replacement_key, "$%d.", j);
+        char_u *pos = strstr(target, capture_key);
+        if (pos) {
+
+          strcpy(replacement, "");
+          expand_name(replacement_key, replacement, state);
+          replacement[strlen(replacement)-1] = 0;
+
+          for(int c = 0; ; c++) {
+            if (correction_map[c].problem == NULL) break;
+            if (strcmp(replacement, correction_map[c].problem) == 0) {
+              strcpy(replacement, correction_map[c].correction);
+            }
+          }
+
+          strcpy(trailer, pos + (strlen(capture_key)));
+          target[pos - target] = 0;
+          sprintf(tmp, "%s%s%s", target, replacement, trailer);
+          strcpy(target, tmp);
+          syntax->rx_end_dynamic = true;
+          dirty = true;
+        }
+      }
+    }
+
+    // printf(">%s recompiled to %s\n", syntax->rxs_end, target);
+    syntax->rx_end = tx_compile_pattern(target);
+    regex = syntax->rx_end;
+
+    tx_free(target);
+    tx_free(tmp);
+    tx_free(trailer);
+#endif
+  }
 
   if (!regex) {
     return match;
@@ -344,9 +407,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
   TxSyntax *last_syntax = NULL;
 
-  TxMatch while_match;
-  tx_init_match(&while_match);
-
   for (int k = 0; k < stack->size - 1 && stack->size > 1; k++) {
     int idx = stack->size - k - 1;
     if (idx - 1 == 0)
@@ -354,10 +414,9 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     TxMatch *m = &stack->states[idx];
     TxSyntax *m_syntax = m->syntax;
     if (m_syntax->rx_while) {
-      if (m->matches[0].start != start - anchor) {
+      if (m->matches[0].start > start - anchor) {
         if (!find_match(anchor, start, end, m_syntax->rx_while,
-                        m_syntax->rxs_while, &while_match)) {
-          while_match.syntax = m_syntax;
+                        m_syntax->rxs_while, NULL)) {
           stack->size = idx - 1; // pop until this match
           goto end_line;
         }
@@ -365,8 +424,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
       break;
     }
   }
-
-  // if (!stack->size) return;
 
   while (true) {
     TxMatch *top = tx_state_top(stack);
@@ -389,7 +446,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     }
 
     if (syntax->rx_end || syntax->rx_end_dynamic) {
-      end_match = match_end(anchor, start, end, syntax);
+      end_match = match_end(anchor, start, end, syntax, top);
     }
 
     if (end_match.syntax &&
@@ -463,7 +520,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
     // prevent possible endless loop
     if (start == end && last_syntax == tx_state_top(stack)->syntax) {
-      break;
+      // break;
     }
 
     start = end;

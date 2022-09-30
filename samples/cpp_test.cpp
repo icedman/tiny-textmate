@@ -6,7 +6,7 @@
 #define ZZ
 #endif
 
-int main(int argc, char **argv) {
+int main(int argc /*arg*/, char **argv) {
     return 0;
 }
 

@@ -87,47 +87,59 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           *regexes_strings[i] = regex_node->self.string_value;
 #endif
 
-#ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-          if (strcmp(key, "end") == 0) {
-            int len = strlen(item->valuestring) + 1024;
-            char_u *target = tx_malloc(len * sizeof(char_u));
-            char_u *tmp = tx_malloc(len * sizeof(char_u));
-            char_u *trailer = tx_malloc(len * sizeof(char_u));
-            char_u capture_key[8];
-
-            strcpy(target, item->valuestring);
-
-            bool dirty = true;
-            while (dirty) {
-              dirty = false;
-              for (int j = 0; j < TX_MAX_MATCHES; j++) {
-                sprintf(capture_key, "\\%d", j);
-                char_u *pos = strstr(target, capture_key);
-                if (pos) {
-                  strcpy(trailer, pos + (strlen(capture_key)));
-                  target[pos - target] = 0;
-                  sprintf(tmp, "%s[a-zA-Z0-9]+%s", target, trailer);
-                  strcpy(target, tmp);
-                  syntax->rx_end_dynamic = true;
-                  dirty = true;
-                }
-              }
+        if (strcmp(key, "end") == 0) {
+          char_u capture_key[8];
+          for (int j = 0; j < TX_MAX_MATCHES; j++) {
+            sprintf(capture_key, "\\%d", j);
+            if (strstr(item->valuestring, capture_key)) {
+              syntax->rx_end_dynamic = true;
+              break;
             }
-
-            if (syntax->rx_end_dynamic) {
-              // printf("rx_end recompiled %s .. to .. %s\n", item->valuestring,
-              // target);
-              TxNode *ns = txn_new_string(target);
-              txn_set_string_value(regex_node, target);
-              syntax->rxs_end = ns->string_value;
-              syntax->rx_end = tx_compile_pattern(target);
-            }
-
-            tx_free(trailer);
-            tx_free(tmp);
-            tx_free(target);
           }
-#endif
+        }
+
+// #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
+//           if (strcmp(key, "end") == 0) {
+//             int len = strlen(item->valuestring) + 1024;
+//             char_u *target = tx_malloc(len * sizeof(char_u));
+//             char_u *tmp = tx_malloc(len * sizeof(char_u));
+//             char_u *trailer = tx_malloc(len * sizeof(char_u));
+//             char_u capture_key[8];
+
+//             strcpy(target, item->valuestring);
+
+//             // todo fix me otherwise markdown, mathml will fail!
+//             bool dirty = true;
+//             while (dirty) {
+//               dirty = false;
+//               for (int j = 0; j < TX_MAX_MATCHES; j++) {
+//                 sprintf(capture_key, "\\%d", j);
+//                 char_u *pos = strstr(target, capture_key);
+//                 if (pos) {
+//                   strcpy(trailer, pos + (strlen(capture_key)));
+//                   target[pos - target] = 0;
+//                   sprintf(tmp, "%s[a-zA-Z0-9\\*#]+%s", target, trailer);
+//                   strcpy(target, tmp);
+//                   syntax->rx_end_dynamic = true;
+//                   dirty = true;
+//                 }
+//               }
+//             }
+
+//             if (syntax->rx_end_dynamic) {
+//               printf("rx_end recompiled %s .. to .. %s\n", item->valuestring, target);
+//               TxNode *ns = txn_new_string(target);
+//               txn_set_string_value(regex_node, target);
+//               syntax->rxs_end = ns->string_value;
+//               syntax->rx_end = tx_compile_pattern(target);
+//             }
+
+//             tx_free(trailer);
+//             tx_free(tmp);
+//             tx_free(target);
+//           }
+// #endif
+
           if (!syntax->rx_end_dynamic) {
             *regexes[i] = tx_compile_pattern(item->valuestring);
           }
@@ -353,20 +365,6 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
                 txn_set(language_node, "extensions", txn_new_array());
             TxNode *filenames_node =
                 txn_set(language_node, "filenames", txn_new_array());
-
-            // resolve grammar scope_name
-            // TxNode *grammar_child = grammars_node->first_child;
-            // while (grammar_child) {
-            //   TxNode *id = txn_get(grammar_child, "language");
-            //   TxNode *scope = txn_get(grammar_child, "scopeName");
-            //   if (scope && id && strcmp(id->string_value, language_id) == 0)
-            //   {
-            //     txn_set(language_node, "scopeName",
-            //             txn_new_string(scope->string_value));
-            //     break;
-            //   }
-            //   grammar_child = grammar_child->next_sibling;
-            // }
 
             // extensions
             cJSON *extensions =

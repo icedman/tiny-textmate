@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
+// #define TX_COLORIZE_HTML
 #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
@@ -278,12 +279,21 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #endif
 
 #ifdef TX_COLORIZE
-#define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
-#define _BEGIN_BOLD printf("\x1b[1m");
-#define _BEGIN_DIM printf("\x1b[2m");
-#define _BEGIN_UNDERLINE printf("\x1b[4m");
-#define _BEGIN_REVERSE printf("\x1b[7m");
-#define _END_FORMAT printf("\x1b[0m");
+  #ifdef TX_COLORIZE_HTML
+    #define _BEGIN_COLOR(R, G, B) printf("<span style='color: rgb(%d,%d,%d)'>", R, G, B);
+    #define _BEGIN_BOLD printf("");
+    #define _BEGIN_DIM printf("");
+    #define _BEGIN_UNDERLINE printf("");
+    #define _BEGIN_REVERSE printf("");
+    #define _END_FORMAT printf("</span>");
+  #else
+    #define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
+    #define _BEGIN_BOLD printf("\x1b[1m");
+    #define _BEGIN_DIM printf("\x1b[2m");
+    #define _BEGIN_UNDERLINE printf("\x1b[4m");
+    #define _BEGIN_REVERSE printf("\x1b[7m");
+    #define _END_FORMAT printf("\x1b[0m");
+  #endif
 #else
 #define _BEGIN_COLOR(R, G, B)
 #define _BEGIN_BOLD

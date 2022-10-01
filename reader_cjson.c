@@ -87,58 +87,16 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           *regexes_strings[i] = regex_node->self.string_value;
 #endif
 
-        if (strcmp(key, "end") == 0) {
-          char_u capture_key[8];
-          for (int j = 0; j < TX_MAX_MATCHES; j++) {
-            sprintf(capture_key, "\\%d", j);
-            if (strstr(item->valuestring, capture_key)) {
-              syntax->rx_end_dynamic = true;
-              break;
+          if (strcmp(key, "end") == 0) {
+            char_u capture_key[8];
+            for (int j = 0; j < TX_MAX_MATCHES; j++) {
+              sprintf(capture_key, "\\%d", j);
+              if (strstr(item->valuestring, capture_key)) {
+                syntax->rx_end_dynamic = true;
+                break;
+              }
             }
           }
-        }
-
-// #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-//           if (strcmp(key, "end") == 0) {
-//             int len = strlen(item->valuestring) + 1024;
-//             char_u *target = tx_malloc(len * sizeof(char_u));
-//             char_u *tmp = tx_malloc(len * sizeof(char_u));
-//             char_u *trailer = tx_malloc(len * sizeof(char_u));
-//             char_u capture_key[8];
-
-//             strcpy(target, item->valuestring);
-
-//             // todo fix me otherwise markdown, mathml will fail!
-//             bool dirty = true;
-//             while (dirty) {
-//               dirty = false;
-//               for (int j = 0; j < TX_MAX_MATCHES; j++) {
-//                 sprintf(capture_key, "\\%d", j);
-//                 char_u *pos = strstr(target, capture_key);
-//                 if (pos) {
-//                   strcpy(trailer, pos + (strlen(capture_key)));
-//                   target[pos - target] = 0;
-//                   sprintf(tmp, "%s[a-zA-Z0-9\\*#]+%s", target, trailer);
-//                   strcpy(target, tmp);
-//                   syntax->rx_end_dynamic = true;
-//                   dirty = true;
-//                 }
-//               }
-//             }
-
-//             if (syntax->rx_end_dynamic) {
-//               printf("rx_end recompiled %s .. to .. %s\n", item->valuestring, target);
-//               TxNode *ns = txn_new_string(target);
-//               txn_set_string_value(regex_node, target);
-//               syntax->rxs_end = ns->string_value;
-//               syntax->rx_end = tx_compile_pattern(target);
-//             }
-
-//             tx_free(trailer);
-//             tx_free(tmp);
-//             tx_free(target);
-//           }
-// #endif
 
           if (!syntax->rx_end_dynamic) {
             *regexes[i] = tx_compile_pattern(item->valuestring);
@@ -556,8 +514,7 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   return root;
 }
 
-TxSyntaxNode *txn_load_syntax_data(char_u *data)
-{
+TxSyntaxNode *txn_load_syntax_data(char_u *data) {
   cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
@@ -598,8 +555,7 @@ TxThemeNode *txn_load_theme(char_u *path) {
   return thm;
 }
 
-TxThemeNode *txn_load_theme_data(char_u *data)
-{
+TxThemeNode *txn_load_theme_data(char_u *data) {
   cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
@@ -610,7 +566,7 @@ TxThemeNode *txn_load_theme_data(char_u *data)
   }
 
   TxThemeNode *thm = txn_new_theme();
-  parse_theme(json, thm, (char_u*)"data://theme");
+  parse_theme(json, thm, (char_u *)"data://theme");
   cJSON_free(json);
   return thm;
 }
@@ -674,4 +630,3 @@ TxNode *txn_load_json(char_u *path) {
   tx_free(content);
   return root;
 }
-

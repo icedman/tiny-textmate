@@ -1,6 +1,6 @@
 #include "textmate.h"
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #define _PRINT_BUFFER_RANGE(B, S, E)                                           \
   { printf("%s", tx_extract_buffer_range(B, S, E)); }
@@ -200,6 +200,7 @@ static void collect_render_line_end(TxParseProcessor *self) {
     c++;
     idx++;
   }
+  printf("\n");
 }
 
 //------------------

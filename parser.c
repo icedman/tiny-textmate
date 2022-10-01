@@ -1,7 +1,7 @@
 #include "textmate.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 // optimization
 // #define TX_DISCARD_EARLY
@@ -274,11 +274,7 @@ typedef struct {
 } correction_map_t;
 
 static const correction_map_t correction_map[] = {
-  {"**", "\\*\\*"},
-  {"*i", "\\*i"},
-  {"*", "\\*"},
-  NULL
-};
+    {"**", "\\*\\*"}, {"*i", "\\*i"}, {"*", "\\*"}, NULL};
 
 static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
                          TxSyntax *syntax, TxMatch *state) {
@@ -314,10 +310,11 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
 
           strcpy(replacement, "");
           expand_name(replacement_key, replacement, state);
-          replacement[strlen(replacement)-1] = 0;
+          replacement[strlen(replacement) - 1] = 0;
 
-          for(int c = 0; ; c++) {
-            if (correction_map[c].problem == NULL) break;
+          for (int c = 0;; c++) {
+            if (correction_map[c].problem == NULL)
+              break;
             if (strcmp(replacement, correction_map[c].problem) == 0) {
               strcpy(replacement, correction_map[c].correction);
             }

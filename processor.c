@@ -199,7 +199,83 @@ static void collect_render_line_end(TxParseProcessor *self) {
     c++;
     idx++;
   }
-  printf("\n");
+}
+
+static void collect_style_line_end(TxParseProcessor *self) {
+  TxParserState *line_parser_state = &self->line_parser_state;
+
+  int len = self->buffer_end - self->buffer_start;
+  int style_idx = 0;
+  TxStyleSpan default_style;
+
+  if (self->theme) {
+    if (tx_style_from_scope("foreground", self->theme, &default_style)) {
+      //
+    } else if (tx_style_from_scope("editor.foreground", self->theme, &default_style)) {
+      //
+    }
+  }
+
+  char_u *c = self->buffer_start;
+  int idx = 0;
+  while (c < self->buffer_end) {
+
+    TxStyleSpan style = default_style;
+    style.start = idx;
+    style.end = len;
+    TxMatchRange *match_range = NULL;
+
+    for (int j = 0; j < line_parser_state->size; j++) {
+      TxMatch *state = &line_parser_state->states[j];
+      for (int i = 0; i < state->size; i++) {
+        if (!state->matches[i].scope[0])
+          continue;
+
+        TxMatchRange *range = &state->matches[i];
+
+        if (state->matches[i].start < 0 || state->matches[i].end < 0)
+          continue;
+        if (state->matches[i].start <= idx && idx < state->matches[i].end) {
+          TxStyleSpan _style;
+          if (self->theme &&
+              !tx_style_from_scope(range->scope, self->theme, &_style)) {
+            range = NULL;
+          }
+          if (range) {
+            match_range = range;
+            style = _style;
+          }
+        }
+      }
+    }
+
+    style.start = idx;
+    style.end = idx + 1;
+    if (style_idx < TX_MAX_STYLE_SPANS) {
+      if (self->theme || style_idx == 0) {
+        if (style_idx == 0) {
+          self->line_styles[style_idx++] = style;
+        } else {
+          if (self->line_styles[style_idx-1].fg == style.fg) {
+            self->line_styles[style_idx-1].end = idx + 1;
+          } else {
+            self->line_styles[style_idx++] = style;
+          }
+        }
+      }
+    }
+
+    c++;
+    idx++;
+  }
+
+  self->line_styles[style_idx-1].end = len;
+  self->line_styles_size = style_idx;
+
+  // for(int i=0; i<self->line_styles_size; i++) {
+  //   printf("(%d-%d) fg:%x\n", self->line_styles[i].start, 
+  //       self->line_styles[i].end, self->line_styles[i].fg);
+  // }
 }
 
 //------------------
@@ -217,6 +293,7 @@ void tx_init_processor(TxParseProcessor *processor, TxProcessorType type) {
   case TxProcessorTypeCollect:
   case TxProcessorTypeCollectAndDump:
   case TxProcessorTypeCollectAndRender:
+  case TxProcessorTypeCollectAndStyle:
     processor->line_start = collect_line_start;
     processor->line_end = null_line_end;
     processor->open_tag = collect_open_tag;
@@ -238,6 +315,9 @@ void tx_init_processor(TxParseProcessor *processor, TxProcessorType type) {
     break;
   case TxProcessorTypeCollectAndRender:
     processor->line_end = collect_render_line_end;
+    break;
+  case TxProcessorTypeCollectAndStyle:
+    processor->line_end = collect_style_line_end;
     break;
   }
 }

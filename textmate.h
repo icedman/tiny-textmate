@@ -15,6 +15,7 @@
 #define TX_SCOPE_NAME_LENGTH 128 //
 #define TX_CAPTURED_NAME_LENGTH 32 //
 #define TX_MAX_LINE_LENGTH 1024
+#define TX_MAX_STYLE_SPANS 128
 
 #ifndef char_u
 typedef uint8_t char_u;
@@ -144,6 +145,8 @@ typedef struct {
 } TxThemeNode;
 
 typedef struct {
+  int32_t start;
+  int32_t end;
   uint32_t fg;
   uint32_t bg;
   bool italic;
@@ -177,6 +180,7 @@ typedef enum {
   TxProcessorTypeCollect,
   TxProcessorTypeCollectAndDump,
   TxProcessorTypeCollectAndRender,
+  TxProcessorTypeCollectAndStyle,
 } TxProcessorType;
 
 typedef struct _TxParseProcessor {
@@ -191,6 +195,8 @@ typedef struct _TxParseProcessor {
   char_u *buffer_start;
   char_u *buffer_end;
   TxTheme *theme;
+  int line_styles_size;
+  TxStyleSpan line_styles[TX_MAX_STYLE_SPANS];
 } TxParseProcessor;
 
 TxNode *txn_new(char_u *name, TxValueType type);

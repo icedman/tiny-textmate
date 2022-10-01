@@ -512,12 +512,19 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   fread(content, sz, 1, fp);
   fclose(fp);
 
-  cJSON *json = cJSON_Parse(content);
+  TxSyntaxNode *root = txn_load_syntax_data(content);
+  tx_free(content);
+  return root;
+}
+
+TxSyntaxNode *txn_load_syntax_data(char_u *data) {
+  cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
     if (error_ptr != NULL) {
       printf("Error before: %s\n", error_ptr);
     }
+    return NULL;
   }
 
   TxSyntaxNode *root = txn_new_syntax();
@@ -527,12 +534,8 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
 
   txn_set(root, "repository", syntax->repository);
   parse_syntax(json, root, root);
-
-  cJSON_free(json);
-  tx_free(content);
-
-  // printf("post process!\n");
   post_process_syntax(root, root);
+  cJSON_free(json);
   return root;
 }
 
@@ -550,19 +553,24 @@ TxThemeNode *txn_load_theme(char_u *path) {
   fread(content, sz, 1, fp);
   fclose(fp);
 
-  cJSON *json = cJSON_Parse(content);
+  TxThemeNode *thm = txn_load_theme_data(content);
+  tx_free(content);
+  return thm;
+}
+
+TxThemeNode *txn_load_theme_data(char_u *data) {
+  cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
     if (error_ptr != NULL) {
       printf("Error before: %s\n", error_ptr);
     }
+    return NULL;
   }
 
   TxThemeNode *thm = txn_new_theme();
-  parse_theme(json, thm, path);
-
+  parse_theme(json, thm, (char_u *)"data://theme");
   cJSON_free(json);
-  tx_free(content);
   return thm;
 }
 

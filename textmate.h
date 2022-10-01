@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
+// #define TX_COLORIZE_HTML
 #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
@@ -66,15 +67,16 @@ typedef struct _TxNode {
 } TxNode;
 
 typedef struct _TxSyntax {
-  struct TxNode *self;
-  struct TxNode *root;
-  struct TxSyntaxNode *repository;
+  TxNode *self;
+  TxNode *root;
+  TxNode *repository;
 
-  struct TxSyntaxNode *patterns;
-  struct TxSyntaxNode *include;
-  struct TxSyntaxNode *captures;
-  struct TxSyntaxNode *begin_captures;
-  struct TxSyntaxNode *end_captures;
+  TxNode *patterns;
+  TxNode *include;
+  TxNode *captures;
+  TxNode *begin_captures;
+  TxNode *end_captures;
+  TxNode *while_captures;
 
   char_u *name;
   char_u *content_name;
@@ -106,7 +108,7 @@ typedef struct {
 } TxSyntaxNode;
 
 typedef struct {
-  struct TxNode *self;
+  TxNode *self;
   TxNode *grammars;
   TxNode *languages;
   TxNode *themes;
@@ -118,7 +120,7 @@ typedef struct {
 } TxPackageNode;
 
 typedef struct {
-  struct TxNode *self;
+  TxNode *self;
   uint32_t fg;
   uint32_t bg;
   bool italic;
@@ -132,8 +134,8 @@ typedef struct {
 } TxFontStyleNode;
 
 typedef struct {
-  struct TxNode *self;
-  struct TxNode *token_colors;
+  TxNode *self;
+  TxNode *token_colors;
 } TxTheme;
 
 typedef struct {
@@ -177,15 +179,15 @@ typedef enum {
   TxProcessorTypeCollectAndRender,
 } TxProcessorType;
 
-typedef struct {
+typedef struct _TxParseProcessor {
   TxParserState *parser_state;
   TxParserState line_parser_state;
-  void (*line_start)(struct TxParseProcessor *self, char_u *buffer_start,
+  void (*line_start)(struct _TxParseProcessor *self, char_u *buffer_start,
                      char_u *buffer_end);
-  void (*line_end)(struct TxParseProcessor *self);
-  void (*open_tag)(struct TxParseProcessor *self, TxMatch *state);
-  void (*close_tag)(struct TxParseProcessor *self, TxMatch *state);
-  void (*capture)(struct TxParseProcessor *self, TxMatch *state);
+  void (*line_end)(struct _TxParseProcessor *self);
+  void (*open_tag)(struct _TxParseProcessor *self, TxMatch *state);
+  void (*close_tag)(struct _TxParseProcessor *self, TxMatch *state);
+  void (*capture)(struct _TxParseProcessor *self, TxMatch *state);
   char_u *buffer_start;
   char_u *buffer_end;
   TxTheme *theme;
@@ -216,6 +218,7 @@ TxNode *txn_root(TxNode *node);
 
 TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char_u *path);
+TxSyntaxNode *txn_load_syntax_data(char_u *data);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
 
 TxPackageNode *txn_new_package();
@@ -224,6 +227,7 @@ TxPackage *txn_package_value(TxPackageNode *pkn);
 
 TxThemeNode *txn_new_theme();
 TxThemeNode *txn_load_theme(char_u *path);
+TxThemeNode *txn_load_theme_data(char_u *data);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
 TxFontStyleNode *txn_new_font_style();
 TxFontStyle *txn_font_style_value(TxFontStyleNode *pkn);
@@ -277,12 +281,21 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #endif
 
 #ifdef TX_COLORIZE
-#define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
-#define _BEGIN_BOLD printf("\x1b[1m");
-#define _BEGIN_DIM printf("\x1b[2m");
-#define _BEGIN_UNDERLINE printf("\x1b[4m");
-#define _BEGIN_REVERSE printf("\x1b[7m");
-#define _END_FORMAT printf("\x1b[0m");
+  #ifdef TX_COLORIZE_HTML
+    #define _BEGIN_COLOR(R, G, B) printf("<span style='color: rgb(%d,%d,%d)'>", R, G, B);
+    #define _BEGIN_BOLD printf("");
+    #define _BEGIN_DIM printf("");
+    #define _BEGIN_UNDERLINE printf("");
+    #define _BEGIN_REVERSE printf("");
+    #define _END_FORMAT printf("</span>");
+  #else
+    #define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
+    #define _BEGIN_BOLD printf("\x1b[1m");
+    #define _BEGIN_DIM printf("\x1b[2m");
+    #define _BEGIN_UNDERLINE printf("\x1b[4m");
+    #define _BEGIN_REVERSE printf("\x1b[7m");
+    #define _END_FORMAT printf("\x1b[0m");
+  #endif
 #else
 #define _BEGIN_COLOR(R, G, B)
 #define _BEGIN_BOLD

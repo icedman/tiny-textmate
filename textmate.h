@@ -47,11 +47,11 @@ typedef struct _TxNode {
   int32_t index;
 
   // tree
-  struct _TxNode *parent;
-  struct _TxNode *prev_sibling;
-  struct _TxNode *next_sibling;
-  struct _TxNode *first_child;
-  struct _TxNode *last_child;
+  _TxNode *parent;
+  _TxNode *prev_sibling;
+  _TxNode *next_sibling;
+  _TxNode *first_child;
+  _TxNode *last_child;
   size_t size;
 
   // data
@@ -61,20 +61,20 @@ typedef struct _TxNode {
   char_u *string_value;
   void *data;
 
-  void (*destroy)(struct _TxNode *);
+  void (*destroy)(_TxNode *);
 } TxNode;
 
 typedef struct _TxSyntax {
-  struct TxNode *self;
-  struct TxNode *root;
-  struct TxSyntaxNode *repository;
+  TxNode *self;
+  TxNode *root;
+  TxNode *repository;
 
-  struct TxSyntaxNode *patterns;
-  struct TxSyntaxNode *include;
-  struct TxSyntaxNode *captures;
-  struct TxSyntaxNode *begin_captures;
-  struct TxSyntaxNode *end_captures;
-  struct TxSyntaxNode *while_captures;
+  TxNode *patterns;
+  TxNode *include;
+  TxNode *captures;
+  TxNode *begin_captures;
+  TxNode *end_captures;
+  TxNode *while_captures;
 
   char_u *name;
   char_u *content_name;
@@ -106,7 +106,7 @@ typedef struct {
 } TxSyntaxNode;
 
 typedef struct {
-  struct TxNode *self;
+  TxNode *self;
   TxNode *grammars;
   TxNode *languages;
   TxNode *themes;
@@ -118,7 +118,7 @@ typedef struct {
 } TxPackageNode;
 
 typedef struct {
-  struct TxNode *self;
+  TxNode *self;
   uint32_t fg;
   uint32_t bg;
   bool italic;
@@ -132,8 +132,8 @@ typedef struct {
 } TxFontStyleNode;
 
 typedef struct {
-  struct TxNode *self;
-  struct TxNode *token_colors;
+  TxNode *self;
+  TxNode *token_colors;
 } TxTheme;
 
 typedef struct {
@@ -176,15 +176,15 @@ typedef enum {
   TxProcessorTypeCollectAndRender,
 } TxProcessorType;
 
-typedef struct {
+typedef struct _TxParseProcessor {
   TxParserState *parser_state;
   TxParserState line_parser_state;
-  void (*line_start)(struct TxParseProcessor *self, char_u *buffer_start,
+  void (*line_start)(_TxParseProcessor *self, char_u *buffer_start,
                      char_u *buffer_end);
-  void (*line_end)(struct TxParseProcessor *self);
-  void (*open_tag)(struct TxParseProcessor *self, TxMatch *state);
-  void (*close_tag)(struct TxParseProcessor *self, TxMatch *state);
-  void (*capture)(struct TxParseProcessor *self, TxMatch *state);
+  void (*line_end)(_TxParseProcessor *self);
+  void (*open_tag)(_TxParseProcessor *self, TxMatch *state);
+  void (*close_tag)(_TxParseProcessor *self, TxMatch *state);
+  void (*capture)(_TxParseProcessor *self, TxMatch *state);
   char_u *buffer_start;
   char_u *buffer_end;
   TxTheme *theme;

@@ -1,5 +1,6 @@
 #include "textmate.h"
 #include <string.h>
+#include <stdio.h>
 
 #define _PRINT_BUFFER_RANGE(B, S, E)                                           \
   { printf("%s", tx_extract_buffer_range(B, S, E)); }

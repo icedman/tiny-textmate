@@ -47,11 +47,11 @@ typedef struct _TxNode {
   int32_t index;
 
   // tree
-  _TxNode *parent;
-  _TxNode *prev_sibling;
-  _TxNode *next_sibling;
-  _TxNode *first_child;
-  _TxNode *last_child;
+  struct _TxNode *parent;
+  struct _TxNode *prev_sibling;
+  struct _TxNode *next_sibling;
+  struct _TxNode *first_child;
+  struct _TxNode *last_child;
   size_t size;
 
   // data
@@ -61,7 +61,7 @@ typedef struct _TxNode {
   char_u *string_value;
   void *data;
 
-  void (*destroy)(_TxNode *);
+  void (*destroy)(struct _TxNode *);
 } TxNode;
 
 typedef struct _TxSyntax {
@@ -179,12 +179,12 @@ typedef enum {
 typedef struct _TxParseProcessor {
   TxParserState *parser_state;
   TxParserState line_parser_state;
-  void (*line_start)(_TxParseProcessor *self, char_u *buffer_start,
+  void (*line_start)(struct _TxParseProcessor *self, char_u *buffer_start,
                      char_u *buffer_end);
-  void (*line_end)(_TxParseProcessor *self);
-  void (*open_tag)(_TxParseProcessor *self, TxMatch *state);
-  void (*close_tag)(_TxParseProcessor *self, TxMatch *state);
-  void (*capture)(_TxParseProcessor *self, TxMatch *state);
+  void (*line_end)(struct _TxParseProcessor *self);
+  void (*open_tag)(struct _TxParseProcessor *self, TxMatch *state);
+  void (*close_tag)(struct _TxParseProcessor *self, TxMatch *state);
+  void (*capture)(struct _TxParseProcessor *self, TxMatch *state);
   char_u *buffer_start;
   char_u *buffer_end;
   TxTheme *theme;
@@ -215,6 +215,7 @@ TxNode *txn_root(TxNode *node);
 
 TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char_u *path);
+TxSyntaxNode *txn_load_syntax_data(char_u *data);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
 
 TxPackageNode *txn_new_package();
@@ -223,6 +224,7 @@ TxPackage *txn_package_value(TxPackageNode *pkn);
 
 TxThemeNode *txn_new_theme();
 TxThemeNode *txn_load_theme(char_u *path);
+TxThemeNode *txn_load_theme_data(char_u *data);
 TxTheme *txn_theme_value(TxThemeNode *pkn);
 TxFontStyleNode *txn_new_font_style();
 TxFontStyle *txn_font_style_value(TxFontStyleNode *pkn);

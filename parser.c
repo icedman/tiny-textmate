@@ -1,6 +1,7 @@
 #include "textmate.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // optimization
 // #define TX_DISCARD_EARLY

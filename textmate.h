@@ -12,6 +12,7 @@
 #define TX_MAX_STACK_DEPTH 64    // json, xml could be very deep
 #define TX_MAX_MATCHES 100       // unbelievably .. cpp has a max of 81 captures
 #define TX_SCOPE_NAME_LENGTH 128 //
+#define TX_CAPTURED_NAME_LENGTH 32 //
 #define TX_MAX_LINE_LENGTH 1024
 
 #ifndef char_u
@@ -74,7 +75,6 @@ typedef struct _TxSyntax {
   struct TxSyntaxNode *captures;
   struct TxSyntaxNode *begin_captures;
   struct TxSyntaxNode *end_captures;
-  struct TxSyntaxNode *while_captures;
 
   char_u *name;
   char_u *content_name;
@@ -154,6 +154,7 @@ typedef struct {
   int32_t start;
   int32_t end;
   char_u scope[TX_SCOPE_NAME_LENGTH];
+  char_u captured_name[TX_CAPTURED_NAME_LENGTH];
 } TxMatchRange;
 
 typedef struct {

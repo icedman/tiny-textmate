@@ -52,6 +52,9 @@ int main(int argc, char **argv) {
   tx_read_package_dir(extensions_path);
 
   TxThemeNode *theme = txn_load_theme(theme_path);
+  if (!theme) {
+    goto exit;
+  }
 
   TxSyntaxNode *root = NULL;
   if (scope_name) {
@@ -59,6 +62,11 @@ int main(int argc, char **argv) {
   } else {
     root = grammar_path ? txn_load_syntax(grammar_path)
                         : tx_syntax_from_path(path);
+
+    if (!root) {
+      goto exit;
+    }
+
     if (grammar_path) {
       TxNode *scope = txn_get(root, "scopeName");
       txn_set(tx_global_repository(),
@@ -114,7 +122,10 @@ int main(int argc, char **argv) {
 
   // dump(tx_global_repository(), 0);
 
-  txn_free(theme);
+exit:
+  if (theme) {
+    txn_free(theme);
+  }
 
   tx_shutdown();
   tx_stats();

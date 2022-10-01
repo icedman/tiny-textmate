@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// optimization
-// #define TX_DISCARD_EARLY
 // #define TX_DEBUG_MATCHES
 
 extern uint32_t _match_execs;
@@ -190,24 +188,6 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   TxMatch match;
   tx_init_match(&match);
 
-  // optimize later
-  // #ifdef TX_DISCARD_EARLY
-  //   if (syntax->anchor == anchor && (syntax->rx_match || syntax->rx_begin)) {
-  //     // discard by possible offset result or rank
-  //     if (current_offset > 0 && syntax->offset > 0) {
-  //       if (syntax->offset > current_offset) {
-  //         _skipped_match_execs++;
-  //         return match;
-  //       }
-  //       if (syntax->offset == current_offset &&
-  //           syntax->rank < current_rank) {
-  //         _skipped_match_execs++;
-  //         return match;
-  //       }
-  //     }
-  //   }
-  // #endif
-
   if (syntax->rx_match && find_match(anchor, start, end, syntax->rx_match,
                                      syntax->rxs_match, &match)) {
     match.syntax = syntax;
@@ -273,11 +253,7 @@ typedef struct {
 } correction_map_t;
 
 static const correction_map_t correction_map[] = {
-  {"**", "\\*\\*"},
-  {"*i", "\\*i"},
-  {"*", "\\*"},
-  NULL
-};
+    {"**", "\\*\\*"}, {"*i", "\\*i"}, {"*", "\\*"}, NULL};
 
 static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
                          TxSyntax *syntax, TxMatch *state) {
@@ -287,18 +263,24 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
   regex_t *regex = syntax->rx_end;
 
   if (syntax->rx_end_dynamic) {
+    // Some end match are dynamic. i.e., patterns transform based on the begin match
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
+
+    // TODO .. find a way avoid recompile
     if (syntax->rx_end) {
       onig_free(syntax->rx_end);
       syntax->rx_end = NULL;
     }
+
+    // printf("end syntax:%x state:%x\n", syntax, state);
+
     int len = strlen(syntax->rxs_end) + 128;
     char_u *target = tx_malloc(len * sizeof(char_u));
     char_u *tmp = tx_malloc(len * sizeof(char_u));
     char_u *trailer = tx_malloc(len * sizeof(char_u));
     char_u capture_key[8];
     char_u replacement_key[32];
-    char_u replacement[TX_SCOPE_NAME_LENGTH];
+    char_u replacement[TX_CAPTURED_NAME_LENGTH];
 
     strcpy(target, syntax->rxs_end);
 
@@ -311,12 +293,11 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
         char_u *pos = strstr(target, capture_key);
         if (pos) {
 
-          strcpy(replacement, "");
-          expand_name(replacement_key, replacement, state);
-          replacement[strlen(replacement)-1] = 0;
+          strncpy(replacement, state->matches[j].captured_name, TX_CAPTURED_NAME_LENGTH);
 
-          for(int c = 0; ; c++) {
-            if (correction_map[c].problem == NULL) break;
+          for (int c = 0;; c++) {
+            if (correction_map[c].problem == NULL)
+              break;
             if (strcmp(replacement, correction_map[c].problem) == 0) {
               strcpy(replacement, correction_map[c].correction);
             }
@@ -358,7 +339,7 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   TxNode *node = syntax->self;
   TxNode *parent = node->parent;
 
-  // todo understand name vs scope_name vs content_name (for begin/end)
+  // content name is used for the span between the begin and the end matches
   if (syntax->content_name) {
     expand_name(syntax->content_name, state->matches[0].scope, state);
   } else if (syntax->name) {
@@ -381,8 +362,27 @@ static void collect_captures(char_u *anchor, TxMatch *state,
     if (n) {
       TxNode *scope = txn_get(n, "name");
       if (scope && m->start >= 0) {
+        // A capture can be mapped to a scope name
         expand_name(scope->string_value, temp, state);
         strncpy(m->scope, temp, TX_SCOPE_NAME_LENGTH);
+      } else {
+
+        // Captures can also be have a match and patterns
+        TxNode *patterns = txn_get(n, "patterns");
+        if (patterns) {
+          TxMatch pattern_match;
+          tx_init_match(&pattern_match);
+          pattern_match = match_first_pattern(anchor, anchor + m->start,
+                                              anchor + m->end, patterns);
+          if (pattern_match.syntax) {
+            collect_match(pattern_match.syntax, &pattern_match, processor);
+            if (pattern_match.syntax->captures) {
+              collect_captures(anchor, &pattern_match,
+                               pattern_match.syntax->captures, processor);
+            }
+          }
+        }
+
       }
     }
   }
@@ -407,17 +407,21 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
   TxSyntax *last_syntax = NULL;
 
-  for (int k = 0; k < stack->size - 1 && stack->size > 1; k++) {
+  // Handle the while condition,
+  // This implementation is currently tailored to markdown
+  for (int k = 0; k < stack->size - 1; k++) {
     int idx = stack->size - k - 1;
-    if (idx - 1 == 0)
-      break;
     TxMatch *m = &stack->states[idx];
     TxSyntax *m_syntax = m->syntax;
+
     if (m_syntax->rx_while) {
-      if (m->matches[0].start > start - anchor) {
-        if (!find_match(anchor, start, end, m_syntax->rx_while,
-                        m_syntax->rxs_while, NULL)) {
+      if (!find_match(anchor, start, end, m_syntax->rx_while,
+                      m_syntax->rxs_while, NULL)) {
+        if (idx > 1) {
           stack->size = idx - 1; // pop until this match
+          goto end_line;
+        } else {
+          stack->size = 1;
           goto end_line;
         }
       }
@@ -429,7 +433,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
     TxMatch *top = tx_state_top(stack);
     TxSyntax *syntax = top->syntax;
 
-    // printf(">>%d %x\n", stack->size, top->syntax);
     // TxNode *r = (TxNode*)(syntax->root);
     // TxNode *n = txn_get(r, "scopeName");
     // printf("stack size: %d %s\n", stack->size, n ? n->string_value : NULL);
@@ -469,10 +472,6 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
                          pattern_match.syntax->end_captures, processor);
       }
 
-#ifdef TX_DEBUG_COLLECT
-      printf("}}}}\n");
-#endif
-
     } else {
       if (!pattern_match.syntax) {
         break;
@@ -485,19 +484,22 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
       if (pattern_match.syntax->rx_begin) {
 
+        // Save captured region for rx_end_dynamic
+        if (pattern_match.syntax->rx_end_dynamic) {
+          for(int k=0; k<pattern_match.size; k++) {
+            strncpy(pattern_match.matches[k].captured_name,
+              tx_extract_buffer_range(anchor, pattern_match.matches[k].start,
+                pattern_match.matches[k].end),
+              TX_CAPTURED_NAME_LENGTH);
+          }
+        }
+
         tx_state_push(stack, &pattern_match);
 
         if (processor && processor->open_tag) {
           processor->open_tag(processor, &pattern_match);
         }
 
-#ifdef TX_DEBUG_COLLECT
-        printf("{{{{\n");
-        printf("%s",
-               tx_extract_buffer_range(anchor, pattern_match.matches[0].start,
-                                       pattern_match.matches[0].end));
-        printf("\n");
-#endif
         if (pattern_match.syntax->begin_captures) {
 
           collect_captures(anchor, &pattern_match,
@@ -520,7 +522,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
     // prevent possible endless loop
     if (start == end && last_syntax == tx_state_top(stack)->syntax) {
-      // break;
+      break;
     }
 
     start = end;

@@ -82,63 +82,26 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         TxSyntaxNode *regex_node = txn_new_syntax();
         if (item->valuestring) {
 
+          bool save_regex_string = false;
 #ifdef TX_SYNTAX_VERBOSE_REGEX
-          txn_set_string_value(regex_node, item->valuestring);
-          *regexes_strings[i] = regex_node->self.string_value;
+          save_regex_string = true;
 #endif
-
-        if (strcmp(key, "end") == 0) {
-          char_u capture_key[8];
-          for (int j = 0; j < TX_MAX_MATCHES; j++) {
-            sprintf(capture_key, "\\%d", j);
-            if (strstr(item->valuestring, capture_key)) {
-              syntax->rx_end_dynamic = true;
-              break;
+          if (strcmp(key, "end") == 0) {
+            save_regex_string = true;
+            char_u capture_key[8];
+            for (int j = 0; j < TX_MAX_MATCHES; j++) {
+              sprintf(capture_key, "\\%d", j);
+              if (strstr(item->valuestring, capture_key)) {
+                syntax->rx_end_dynamic = true;
+                break;
+              }
             }
           }
-        }
 
-// #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
-//           if (strcmp(key, "end") == 0) {
-//             int len = strlen(item->valuestring) + 1024;
-//             char_u *target = tx_malloc(len * sizeof(char_u));
-//             char_u *tmp = tx_malloc(len * sizeof(char_u));
-//             char_u *trailer = tx_malloc(len * sizeof(char_u));
-//             char_u capture_key[8];
-
-//             strcpy(target, item->valuestring);
-
-//             // todo fix me otherwise markdown, mathml will fail!
-//             bool dirty = true;
-//             while (dirty) {
-//               dirty = false;
-//               for (int j = 0; j < TX_MAX_MATCHES; j++) {
-//                 sprintf(capture_key, "\\%d", j);
-//                 char_u *pos = strstr(target, capture_key);
-//                 if (pos) {
-//                   strcpy(trailer, pos + (strlen(capture_key)));
-//                   target[pos - target] = 0;
-//                   sprintf(tmp, "%s[a-zA-Z0-9\\*#]+%s", target, trailer);
-//                   strcpy(target, tmp);
-//                   syntax->rx_end_dynamic = true;
-//                   dirty = true;
-//                 }
-//               }
-//             }
-
-//             if (syntax->rx_end_dynamic) {
-//               printf("rx_end recompiled %s .. to .. %s\n", item->valuestring, target);
-//               TxNode *ns = txn_new_string(target);
-//               txn_set_string_value(regex_node, target);
-//               syntax->rxs_end = ns->string_value;
-//               syntax->rx_end = tx_compile_pattern(target);
-//             }
-
-//             tx_free(trailer);
-//             tx_free(tmp);
-//             tx_free(target);
-//           }
-// #endif
+          if (save_regex_string) {
+            txn_set_string_value(regex_node, item->valuestring);
+            *regexes_strings[i] = regex_node->self.string_value;
+          }
 
           if (!syntax->rx_end_dynamic) {
             *regexes[i] = tx_compile_pattern(item->valuestring);
@@ -177,11 +140,9 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // captures
   {
-    char_u *keys[] = {"captures", "beginCaptures", "endCaptures",
-                      "whileCaptures", 0};
+    char_u *keys[] = {"captures", "beginCaptures", "endCaptures", 0};
     TxSyntaxNode **capture_nodes[] = {
-        &syntax->captures, &syntax->begin_captures, &syntax->end_captures,
-        &syntax->while_captures};
+        &syntax->captures, &syntax->begin_captures, &syntax->end_captures};
     for (int i = 0;; i++) {
       char_u *key = keys[i];
       if (!key)

@@ -250,6 +250,7 @@ static char *test_syntax_paths[] = {(char *)"./tests/data/main.c",
                                     (char *)"./tests/data/math.html",
                                     (char *)"./tests/data/page-list.njk",
                                     (char *)"./tests/data/includes.md",
+                                    (char *)"./tests/data/heading-paragraphs.md",
                                     NULL};
 static MunitParameterEnum syntax_test_params[] = {
     {(char *)"path", test_syntax_paths}, {NULL, NULL}};
@@ -261,8 +262,8 @@ static MunitTest test_suite_tests[] = {
      MUNIT_TEST_OPTION_NONE, syntax_test_params},
     {(char *)"/tests/theme", test_theme, test_setup, test_tear_down,
      MUNIT_TEST_OPTION_NONE, NULL},
-    // {(char *)"/tests/parse", test_parse, test_setup, test_tear_down,
-    //  MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"/tests/parse", test_parse, test_setup, test_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
 static const MunitSuite test_suite = {(char *)"", test_suite_tests, NULL,

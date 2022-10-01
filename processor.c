@@ -97,11 +97,10 @@ static void collect_open_tag(TxParseProcessor *self, TxMatch *state) {
 
 static void collect_close_tag(TxParseProcessor *self, TxMatch *state) {
   TxParserState *line_parser_state = &self->line_parser_state;
+  // at close tag - the range of a begin match is corrected
   for (int j = line_parser_state->size; j > 0; j--) {
     TxMatch *m = &line_parser_state->states[j - 1];
     if (m->syntax == state->syntax) {
-      // printf("!! (%d-%d) (%d-%d)\n", m->matches[0].start, m->matches[0].end,
-      //     state->matches[0].start, state->matches[0].end);
       m->matches[0].end = state->matches[0].end;
       break;
     }

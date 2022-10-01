@@ -1,5 +1,17 @@
 {
    "5": {
+      "3" : {
+         "text" : "<",
+         "scopes" : [
+         ],
+         "vscode_scopes" : [
+            "punctuation.definition.tag.begin.html",
+            "meta.tag.structure.math.mfrac.start.html",
+            "meta.element.structure.math.mfrac.html",
+            "meta.element.structure.math.html",
+            "text.html.derivative"
+         ]
+      },
       "4" : {
          "text" : "mfrac",
          "scopes" : [

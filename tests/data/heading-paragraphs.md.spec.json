@@ -1,0 +1,54 @@
+{
+   "1": {
+      "1" : {
+         "text" : "# H1",
+         "scopes" : [
+            "markup.heading.markdown"
+         ],
+         "vscode_scopes" : [
+            "punctuation.definition.heading.markdown",
+            "heading.1.markdown",
+            "markup.heading.markdown",
+            "text.html.markdown"
+         ]
+      }
+   },
+   "5": {
+      "1" : {
+         "text" : "## H2",
+         "scopes" : [
+            "markup.heading.markdown"
+         ],
+         "vscode_scopes" : [
+            "punctuation.definition.heading.markdown",
+            "heading.2.markdown",
+            "markup.heading.markdown",
+            "text.html.markdown"
+         ]
+      }
+   },
+   "3": {
+      "1" : {
+         "text" : "paragraph 1",
+         "scopes" : [
+            "meta.paragraph.markdown"
+         ],
+         "vscode_scopes" : [
+            "meta.paragraph.markdown",
+            "text.html.markdown"
+         ]
+      }
+   },
+   "7": {
+      "1" : {
+         "text" : "paragraph 2",
+         "scopes" : [
+            "meta.paragraph.markdown"
+         ],
+         "vscode_scopes" : [
+            "meta.paragraph.markdown",
+            "text.html.markdown"
+         ]
+      }
+   }
+}

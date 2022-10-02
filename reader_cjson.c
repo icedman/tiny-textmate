@@ -368,11 +368,7 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
 static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
   char_u *base_path = path;
   TxTheme *theme = txn_theme_value(node);
-  TxNode *token_colors = txn_get(node, "tokenColors");
-  if (!token_colors) {
-    token_colors = txn_set(node, "tokenColors", txn_new_object());
-    theme->token_colors = token_colors;
-  }
+  TxNode *token_colors = theme->token_colors;
 
   {
     cJSON *colors = cJSON_GetObjectItem(obj, "colors");

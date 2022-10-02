@@ -13,25 +13,60 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
     if (child->name) {
       if (strstr(scope, child->name) != NULL) {
         TxFontStyle *fsv = txn_font_style_value(child);
-        style->fg = fsv->fg;
-        style->bg = fsv->bg;
-        style->italic = fsv->italic;
-        style->bold = fsv->bold;
-        style->underline = fsv->underline;
+        memcpy(&style->font_style, fsv, sizeof(TxFontStyle));
         found = true;
-        // break;
+        break;
       }
     }
     child = child->next_sibling;
   }
 
-  if (!found) {
-    // printf("!%s\n", scope);
-    // if (strcmp(scope, "meta.qualified_type.cpp") == 0) {
-    // style->fg = txt_make_color(255,0,255);
-    // style->bold = true;
-    // found = true;
-    // }
+  // slow but more tolerant resolution
+  if (!found && scope) {
+    char temp[TX_SCOPE_NAME_LENGTH];
+
+    txn_push(theme->unresolved_scopes, txn_new_string(scope));
+
+    TxNode *match = NULL;
+    int match_score = 0;
+    TxNode *child = token_colors->first_child;
+    while (child) {
+      if (child->name) {
+        char_u *anchor = child->name;
+        int score = 0;
+
+        strcpy(temp, scope);
+        char_u *token = strtok(temp, ".");
+        while (token) {
+          char_u *pos = strstr(anchor, token);
+          if (pos) {
+            anchor = pos;
+            score += 1;
+          }
+          token = strtok(NULL, ".");
+        }
+
+        if (score > 0) {
+          if (score >= match_score) {
+            match = child;
+            match_score = score;
+          }
+        }
+      }
+      child = child->next_sibling;
+    }
+
+    if (match) {
+      TxFontStyle *fsv = txn_font_style_value(match);
+      memcpy(&style->font_style, fsv, sizeof(TxFontStyle));
+      found = true;
+
+      // add an entry so that we won't have to tokenize again
+      TxFontStyleNode *fs = txn_new_font_style();
+      TxFontStyle *_fsv = txn_font_style_value(fs);
+      memcpy(_fsv, fsv, sizeof(TxFontStyle));
+      txn_set(token_colors, scope, fs);
+    }
   }
 
   return found;

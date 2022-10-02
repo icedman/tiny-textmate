@@ -41,11 +41,12 @@ static MunitResult test_syntax(const MunitParameter params[], void *data) {
 
     TxParseProcessor processor;
     tx_init_processor(&processor, TxProcessorTypeCollect);
-
+    
     char spec_path[1024];
     sprintf(spec_path, "%s.spec.json", path);
-    TxNode *spec = txn_load_json(spec_path);
 
+    TxNode *spec = txn_load_json(spec_path);
+  
     _BEGIN_COLOR(255, 255, 0)
     printf("\n---[ %s ]---\n", path);
     _END_FORMAT

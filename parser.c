@@ -264,7 +264,8 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
   regex_t *regex = syntax->rx_end;
 
   if (syntax->rx_end_dynamic) {
-    // Some end match are dynamic. i.e., patterns transform based on the begin match
+    // Some end match are dynamic. i.e., patterns transform based on the begin
+    // match
 #ifdef TX_SYNTAX_RECOMPILE_REGEX_END
 
     // TODO .. find a way avoid recompile
@@ -294,7 +295,8 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
         char_u *pos = strstr(target, capture_key);
         if (pos) {
 
-          strncpy(replacement, state->matches[j].captured_name, TX_CAPTURED_NAME_LENGTH);
+          strncpy(replacement, state->matches[j].captured_name,
+                  TX_CAPTURED_NAME_LENGTH);
 
           for (int c = 0;; c++) {
             if (correction_map[c].problem == NULL)
@@ -383,7 +385,6 @@ static void collect_captures(char_u *anchor, TxMatch *state,
             }
           }
         }
-
       }
     }
   }
@@ -487,11 +488,12 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
         // Save captured region for rx_end_dynamic
         if (pattern_match.syntax->rx_end_dynamic) {
-          for(int k=0; k<pattern_match.size; k++) {
+          for (int k = 0; k < pattern_match.size; k++) {
             strncpy(pattern_match.matches[k].captured_name,
-              tx_extract_buffer_range(anchor, pattern_match.matches[k].start,
-                pattern_match.matches[k].end),
-              TX_CAPTURED_NAME_LENGTH);
+                    tx_extract_buffer_range(anchor,
+                                            pattern_match.matches[k].start,
+                                            pattern_match.matches[k].end),
+                    TX_CAPTURED_NAME_LENGTH);
           }
         }
 

@@ -19,8 +19,26 @@ int main(int argc, char **argv) {
   }
 
   TxThemeNode *thm = txn_load_theme(path);
+  TxTheme *t = txn_theme_value(thm);
 
-  dump(thm, 0);
+  const char *scopes[] = {
+    "meta.paragraph.markdown",
+    "meta.embedded.block.frontmatter",
+    "meta.flow-sequence.yaml",
+    "meta.paragraph.markdown",
+    "markup.list.unnumbered.markdown",
+    "markup.list.numbered.markdown"
+  };
+
+  for(int i=0; ;i++) {
+    char_u *s = scopes[i];
+    if (!s) break;
+    printf("-------------\n%s\n", s);
+    TxStyleSpan style;
+    tx_style_from_scope(s, t, &style);
+  }
+
+  // dump(thm, 0);
 
   txn_free(thm);
   tx_shutdown();

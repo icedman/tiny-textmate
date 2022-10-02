@@ -47,7 +47,6 @@ typedef enum {
 typedef struct _TxNode {
   TxValueType type;
   int32_t object_type;
-  int32_t index;
 
   // tree
   struct _TxNode *parent;
@@ -137,6 +136,7 @@ typedef struct {
 typedef struct {
   TxNode *self;
   TxNode *token_colors;
+  TxNode *unresolved_scopes;
 } TxTheme;
 
 typedef struct {
@@ -147,11 +147,7 @@ typedef struct {
 typedef struct {
   int32_t start;
   int32_t end;
-  uint32_t fg;
-  uint32_t bg;
-  bool italic;
-  bool bold;
-  bool underline;
+  TxFontStyle font_style;
 } TxStyleSpan;
 
 typedef struct {
@@ -220,6 +216,8 @@ TxNode *txn_pop(TxNode *node);
 TxNode *txn_set(TxNode *node, char_u *key, TxNode *value);
 TxNode *txn_get(TxNode *node, char_u *key);
 TxNode *txn_child_at(TxNode *node, size_t idx);
+TxNode *txn_insert_at(TxNode *node, size_t idx, TxNode *child);
+TxNode *txn_remove(TxNode *node, size_t idx);
 TxNode *txn_root(TxNode *node);
 
 TxSyntaxNode *txn_new_syntax();

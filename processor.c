@@ -141,9 +141,9 @@ static void collect_render_line_end(TxParseProcessor *self) {
   if (self->theme) {
     TxStyleSpan style;
     if (tx_style_from_scope("foreground", self->theme, &style)) {
-      txt_color_to_rgb(style.fg, fg);
+      txt_color_to_rgb(style.font_style.fg, fg);
     } else if (tx_style_from_scope("editor.foreground", self->theme, &style)) {
-      txt_color_to_rgb(style.fg, fg);
+      txt_color_to_rgb(style.font_style.fg, fg);
     }
   }
 
@@ -182,13 +182,13 @@ static void collect_render_line_end(TxParseProcessor *self) {
 
     if (match_range && self->theme) {
       uint32_t rgb[] = {255, 255, 255};
-      if (txt_color_to_rgb(style.fg, rgb)) {
+      if (txt_color_to_rgb(style.font_style.fg, rgb)) {
         _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
       }
-      if (style.italic) {
+      if (style.font_style.italic) {
         // _BEGIN_BOLD // italic is not widely supported on the console
       }
-      if (style.underline) {
+      if (style.font_style.underline) {
         _BEGIN_UNDERLINE
       }
     }
@@ -211,7 +211,8 @@ static void collect_style_line_end(TxParseProcessor *self) {
   if (self->theme) {
     if (tx_style_from_scope("foreground", self->theme, &default_style)) {
       //
-    } else if (tx_style_from_scope("editor.foreground", self->theme, &default_style)) {
+    } else if (tx_style_from_scope("editor.foreground", self->theme,
+                                   &default_style)) {
       //
     }
   }
@@ -256,8 +257,9 @@ static void collect_style_line_end(TxParseProcessor *self) {
         if (style_idx == 0) {
           self->line_styles[style_idx++] = style;
         } else {
-          if (self->line_styles[style_idx-1].fg == style.fg) {
-            self->line_styles[style_idx-1].end = idx + 1;
+          if (self->line_styles[style_idx - 1].font_style.fg ==
+              style.font_style.fg) {
+            self->line_styles[style_idx - 1].end = idx + 1;
           } else {
             self->line_styles[style_idx++] = style;
           }
@@ -269,11 +271,11 @@ static void collect_style_line_end(TxParseProcessor *self) {
     idx++;
   }
 
-  self->line_styles[style_idx-1].end = len;
+  self->line_styles[style_idx - 1].end = len;
   self->line_styles_size = style_idx;
 
   // for(int i=0; i<self->line_styles_size; i++) {
-  //   printf("(%d-%d) fg:%x\n", self->line_styles[i].start, 
+  //   printf("(%d-%d) fg:%x\n", self->line_styles[i].start,
   //       self->line_styles[i].end, self->line_styles[i].fg);
   // }
 }

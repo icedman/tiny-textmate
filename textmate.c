@@ -166,7 +166,6 @@ void txn_free(TxNode *node) {
 }
 
 TxNode *txn_push(TxNode *node, TxNode *child) {
-  child->index = node->size;
   child->parent = node;
   node->size++;
   if (node->first_child == NULL) {
@@ -200,13 +199,60 @@ TxNode *txn_pop(TxNode *node) {
 
 TxNode *txn_child_at(TxNode *node, size_t idx) {
   TxNode *child = node->first_child;
+  int _idx = 0;
   while (child) {
-    if (child->index == idx) {
+    if (_idx++ == idx) {
       return child;
     }
     child = child->next_sibling;
   }
   return NULL;
+}
+
+TxNode *txn_insert_at(TxNode *node, size_t idx, TxNode *child) {
+  TxNode *sibling = txn_child_at(node, idx);
+  if (!sibling || sibling == node->last_child) {
+    return txn_push(node, child);
+  }
+  child->parent = node;
+  child->next_sibling = sibling;
+  child->prev_sibling = sibling->prev_sibling;
+  if (sibling->prev_sibling) {
+    sibling->prev_sibling->next_sibling = child;
+  }
+  sibling->prev_sibling = child;
+  if (sibling == node->first_child) {
+    node->first_child = child;
+  }
+  node->size++;
+  return child;
+}
+
+TxNode *txn_remove(TxNode *node, size_t idx) {
+  TxNode *child = txn_child_at(node, idx);
+  if (child) {
+    if (child->prev_sibling) {
+      child->prev_sibling->next_sibling = child->next_sibling;
+      if (child == node->last_child) {
+        node->last_child = child->prev_sibling;
+      }
+    }
+    if (child->next_sibling) {
+      child->next_sibling->prev_sibling = child->prev_sibling;
+      if (child == node->first_child) {
+        node->first_child = child->next_sibling;
+      }
+    }
+    node->size--;
+    child->parent = NULL;
+    child->prev_sibling = NULL;
+    child->next_sibling = NULL;
+    if (node->size == 0) {
+      node->first_child = NULL;
+      node->last_child = NULL;
+    }
+  }
+  return child;
 }
 
 TxNode *txn_root(TxNode *node) {
@@ -290,6 +336,10 @@ TxThemeNode *txn_new_theme() {
   node->self.type = TxTypeObject;
   node->self.object_type = TxObjectTheme;
   node->theme.self = node;
+
+  node->theme.unresolved_scopes =
+      txn_set(node, "unresolved_scopes", txn_new_array());
+  node->theme.token_colors = txn_set(node, "tokenColors", txn_new_object());
   return node;
 }
 

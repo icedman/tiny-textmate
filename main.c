@@ -124,6 +124,11 @@ int main(int argc, char **argv) {
 
 exit:
   if (theme) {
+    TxNode *child = theme->theme.unresolved_scopes->first_child;
+    while (child) {
+      // printf("%s\n", child->string_value);
+      child = child->next_sibling;
+    }
     txn_free(theme);
   }
 

@@ -8,6 +8,12 @@ int main(int argc, char **argv) {
   txn_push(n, txn_new_number(0));
   txn_push(n, txn_new_number(1));
   txn_push(n, txn_new_number(2));
+  txn_push(n, txn_new_number(3));
+  txn_free(txn_remove(n, 3));
+  txn_free(txn_remove(n, 0));
+  txn_insert_at(n, 0, txn_new_number(4));
+  txn_insert_at(n, 0, txn_new_number(5));
+  txn_insert_at(n, 1, txn_new_number(6));
   txn_push(n, txn_new_string("hello world"));
 
   txn_free(txn_pop(n));
@@ -15,6 +21,7 @@ int main(int argc, char **argv) {
   TxNode *dn = txn_new_object();
   txn_set(n, "hello", txn_new_number(123));
   txn_set(n, "world", txn_new_number(456));
+  txn_set(n, "world", txn_new_number(789));
   txn_push(n, dn);
 
   TxNode *dn2 = txn_new_object();

@@ -137,6 +137,10 @@ static void collect_dump_line_end(TxParseProcessor *self) {
 static void collect_render_line_end(TxParseProcessor *self) {
   TxParserState *line_parser_state = &self->line_parser_state;
 
+  if (self->render_html) {
+    printf("<span>");
+  }
+
   int prev_color = -1;
   int32_t fg = 0xf0f0f0;
   if (self->theme) {
@@ -186,19 +190,39 @@ static void collect_render_line_end(TxParseProcessor *self) {
       if (prev_color != style.font_style.fg) {
         uint32_t rgb[] = {255, 255, 255};
         if (txt_color_to_rgb(style.font_style.fg, rgb)) {
-          _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
+          if (self->render_html) {
+            printf("</span><span style='color: rgb(%d,%d,%d)'>", rgb[0], rgb[1],
+                   rgb[2]);
+          } else {
+            _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
+          }
         }
         prev_color = style.font_style.fg;
       }
     }
 
-    printf("%c", *c);
+    if (self->render_html) {
+      switch (*c) {
+      case '\t':
+        printf("&nbsp;&nbsp;&nbsp;&nbsp;");
+        break;
+      default:
+        printf("%c", *c);
+        break;
+      }
+    } else {
+      printf("%c", *c);
+    }
 
     c++;
     idx++;
   }
 
-  _END_FORMAT
+  if (self->render_html) {
+    printf("</span><br/>\n");
+  } else {
+    _END_FORMAT
+  }
 }
 
 static void collect_style_line_end(TxParseProcessor *self) {

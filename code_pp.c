@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[i - 1], "-x") == 0) {
       extensions_path = argv[i];
     }
-    if (strcmp(argv[i - 1], "-h") == 0) {
+    if (strcmp(argv[i - 1], "-m") == 0) {
       html = true;
     }
   }
@@ -58,6 +58,13 @@ int main(int argc, char **argv) {
   TxSyntaxNode *root = NULL;
   if (scope_name) {
     root = tx_syntax_from_scope(scope_name);
+    if (!root) {
+      root = tx_syntax_from_path(scope_name);
+    }
+    if (!root) {
+      goto exit;
+    }
+
   } else {
     root = grammar_path ? txn_load_syntax(grammar_path)
                         : tx_syntax_from_path("code.c");

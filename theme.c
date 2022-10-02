@@ -3,7 +3,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
+static struct {
+  char *name;
+  char *value;
+} scope_remap[] = {{"function", "entity.name.function"},
+                   // { "tag", "entity.name.tag" },
+                   {"attribute", "entity.other.attribute-name"},
+                   {"parameter", "variable.parameter"},
+                   {"preprocessor", "meta.preprocessor"},
+                   // { "punctuation", "constant.character.escape" },
+                   // { "foreground", "text.source" },
+                   {"block", "text.source"},
+                   {"type", "entity.name.type"},
+                   {NULL, NULL}};
+
+bool _tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   memset(style, 0, sizeof(TxStyleSpan));
 
   bool found = false;
@@ -22,60 +36,28 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   }
 
   return found;
+}
 
-  // slow but more tolerant resolution (but currently inaccurate)
-  if (!found && scope) {
-    char temp[TX_SCOPE_NAME_LENGTH];
-
-    txn_push(theme->unresolved_scopes, txn_new_string(scope));
-
-    TxNode *match = NULL;
-    int match_score = 0;
-    int failure = 0;
-    TxNode *child = token_colors->first_child;
-    while (child) {
-      if (child->name) {
-        char_u *anchor = child->name;
-        int score = 0;
-
-        strcpy(temp, scope);
-        char_u *token = strtok(temp, ".");
-        while (token) {
-          char_u *pos = strstr(anchor, token);
-          if (pos) {
-            anchor = pos;
-            score++;
-          }
-          token = strtok(NULL, ".");
-        }
-
-        if (score > 0) {
-          if (score > match_score) {
-            // printf("\t%s %d\n", child->name, score);
-            match = child;
-            match_score = score;
-          }
-        }
-      }
-      child = child->next_sibling;
-    }
-
-    if (match) {
-      TxFontStyle *fsv = txn_font_style_value(match);
-      memcpy(&style->font_style, fsv, sizeof(TxFontStyle));
-      found = true;
-
-      // add an entry so that we won't have to tokenize again
-      TxFontStyleNode *fs = txn_new_font_style();
-      TxFontStyle *_fsv = txn_font_style_value(fs);
-      memcpy(_fsv, fsv, sizeof(TxFontStyle));
-      txn_set(token_colors, scope, fs);
-
-      // printf("%s > %s\n", scope, match->name);
-    }
+bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
+  if (_tx_style_from_scope(scope, theme, style)) {
+    return true;
   }
 
-  return found;
+  TxNode *token_colors = theme->token_colors;
+
+  // quick remap
+  if (theme && scope) {
+    for (int i = 0;; i++) {
+      if (!scope_remap[i].name)
+        break;
+      if (strstr(scope, scope_remap[i].name)) {
+        return _tx_style_from_scope(scope_remap[i].value, theme, style);
+      }
+    }
+    // txn_push(theme->unresolved_scopes, txn_new_string(scope));
+  }
+
+  return false;
 }
 
 bool txt_color_to_rgb(uint32_t color, uint32_t result[3]) {

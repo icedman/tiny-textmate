@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
   char *grammar_path = default_grammar_path;
 
   char *scope_name = NULL;
+  bool html = false;
 
   char *default_theme_path = "./samples/monokai.json";
   char *theme_path = default_theme_path;
@@ -47,6 +48,9 @@ int main(int argc, char **argv) {
     if (strcmp(argv[i - 1], "-x") == 0) {
       extensions_path = argv[i];
     }
+    if (strcmp(argv[i - 1], "-m") == 0) {
+      html = true;
+    }
   }
 
   tx_read_package_dir(extensions_path);
@@ -59,6 +63,13 @@ int main(int argc, char **argv) {
   TxSyntaxNode *root = NULL;
   if (scope_name) {
     root = tx_syntax_from_scope(scope_name);
+    if (!root) {
+      root = tx_syntax_from_path(scope_name);
+    }
+    if (!root) {
+      goto exit;
+    }
+
   } else {
     root = grammar_path ? txn_load_syntax(grammar_path)
                         : tx_syntax_from_path(path);
@@ -94,6 +105,7 @@ int main(int argc, char **argv) {
     break;
   case 'r':
     tx_init_processor(&processor, TxProcessorTypeCollectAndRender);
+    processor.render_html = html;
     break;
   case 'z':
   default:
@@ -126,7 +138,7 @@ exit:
   if (theme) {
     TxNode *child = theme->theme.unresolved_scopes->first_child;
     while (child) {
-      // printf("%s\n", child->string_value);
+      printf("%s\n", child->string_value);
       child = child->next_sibling;
     }
     txn_free(theme);

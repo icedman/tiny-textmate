@@ -137,13 +137,14 @@ static void collect_dump_line_end(TxParseProcessor *self) {
 static void collect_render_line_end(TxParseProcessor *self) {
   TxParserState *line_parser_state = &self->line_parser_state;
 
-  uint32_t fg[] = {200, 200, 200};
+  int prev_color = -1;
+  int32_t fg = 0xf0f0f0;
   if (self->theme) {
     TxStyleSpan style;
     if (tx_style_from_scope("foreground", self->theme, &style)) {
-      txt_color_to_rgb(style.font_style.fg, fg);
+      fg = style.font_style.fg;
     } else if (tx_style_from_scope("editor.foreground", self->theme, &style)) {
-      txt_color_to_rgb(style.font_style.fg, fg);
+      fg = style.font_style.fg;
     }
   }
 
@@ -151,7 +152,8 @@ static void collect_render_line_end(TxParseProcessor *self) {
   int idx = 0;
   TxStyleSpan style;
   while (c < self->buffer_end) {
-    _BEGIN_COLOR(fg[0], fg[1], fg[2])
+
+    style.font_style.fg = fg;
 
     TxMatchRange *match_range = NULL;
     for (int j = 0; j < line_parser_state->size; j++) {
@@ -180,25 +182,23 @@ static void collect_render_line_end(TxParseProcessor *self) {
       }
     }
 
-    if (match_range && self->theme) {
-      uint32_t rgb[] = {255, 255, 255};
-      if (txt_color_to_rgb(style.font_style.fg, rgb)) {
-        _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
-      }
-      if (style.font_style.italic) {
-        // _BEGIN_BOLD // italic is not widely supported on the console
-      }
-      if (style.font_style.underline) {
-        _BEGIN_UNDERLINE
+    if (self->theme) {
+      if (prev_color != style.font_style.fg) {
+        uint32_t rgb[] = {255, 255, 255};
+        if (txt_color_to_rgb(style.font_style.fg, rgb)) {
+          _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
+        }
+        prev_color = style.font_style.fg;
       }
     }
 
     printf("%c", *c);
-    _END_FORMAT
 
     c++;
     idx++;
   }
+
+  _END_FORMAT
 }
 
 static void collect_style_line_end(TxParseProcessor *self) {

@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
-// #define TX_COLORIZE_HTML
 #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
@@ -96,10 +95,6 @@ typedef struct _TxSyntax {
   char_u *rxs_while;
   bool rx_end_dynamic;
 
-  // match cache
-  char_u *anchor;
-  size_t offset;
-  size_t rank;
 } TxSyntax;
 
 typedef struct {
@@ -191,6 +186,7 @@ typedef struct _TxParseProcessor {
   char_u *buffer_start;
   char_u *buffer_end;
   TxTheme *theme;
+  bool render_html;
   int line_styles_size;
   TxStyleSpan line_styles[TX_MAX_STYLE_SPANS];
 } TxParseProcessor;
@@ -285,21 +281,12 @@ regex_t *tx_compile_pattern(char_u *pattern);
 #endif
 
 #ifdef TX_COLORIZE
-  #ifdef TX_COLORIZE_HTML
-    #define _BEGIN_COLOR(R, G, B) printf("<span style='color: rgb(%d,%d,%d)'>", R, G, B);
-    #define _BEGIN_BOLD printf("");
-    #define _BEGIN_DIM printf("");
-    #define _BEGIN_UNDERLINE printf("");
-    #define _BEGIN_REVERSE printf("");
-    #define _END_FORMAT printf("</span>");
-  #else
-    #define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
-    #define _BEGIN_BOLD printf("\x1b[1m");
-    #define _BEGIN_DIM printf("\x1b[2m");
-    #define _BEGIN_UNDERLINE printf("\x1b[4m");
-    #define _BEGIN_REVERSE printf("\x1b[7m");
-    #define _END_FORMAT printf("\x1b[0m");
-  #endif
+#define _BEGIN_COLOR(R, G, B) printf("\x1b[38;2;%d;%d;%dm", R, G, B);
+#define _BEGIN_BOLD printf("\x1b[1m");
+#define _BEGIN_DIM printf("\x1b[2m");
+#define _BEGIN_UNDERLINE printf("\x1b[4m");
+#define _BEGIN_REVERSE printf("\x1b[7m");
+#define _END_FORMAT printf("\x1b[0m");
 #else
 #define _BEGIN_COLOR(R, G, B)
 #define _BEGIN_BOLD

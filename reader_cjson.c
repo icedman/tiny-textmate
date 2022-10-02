@@ -167,10 +167,6 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         }
       }
     }
-
-    // if (!syntax->end_captures) {
-    //   syntax->end_captures = syntax->captures;
-    // }
   }
 
   // patterns

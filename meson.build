@@ -44,6 +44,15 @@ executable('tiny',
   dependencies: [ onigmo_dep ]
 )
 
+executable('code_pp',
+  'code_pp.c',
+  'tests/dump.c',
+  cjson_files,
+  textmate_files,
+  include_directories: [ cjson_inc, textmate_inc ],
+  dependencies: [ onigmo_dep ]
+)
+
 executable('sample_syntax',
   'tests/syntax.c',
   'tests/dump.c',

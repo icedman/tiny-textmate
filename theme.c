@@ -21,7 +21,9 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
     child = child->next_sibling;
   }
 
-  // slow but more tolerant resolution
+  return found;
+
+  // slow but more tolerant resolution (but currently inaccurate)
   if (!found && scope) {
     char temp[TX_SCOPE_NAME_LENGTH];
 
@@ -29,6 +31,7 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
 
     TxNode *match = NULL;
     int match_score = 0;
+    int failure = 0;
     TxNode *child = token_colors->first_child;
     while (child) {
       if (child->name) {
@@ -41,13 +44,14 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
           char_u *pos = strstr(anchor, token);
           if (pos) {
             anchor = pos;
-            score += 1;
+            score++;
           }
           token = strtok(NULL, ".");
         }
 
         if (score > 0) {
-          if (score >= match_score) {
+          if (score > match_score) {
+            // printf("\t%s %d\n", child->name, score);
             match = child;
             match_score = score;
           }
@@ -66,6 +70,8 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
       TxFontStyle *_fsv = txn_font_style_value(fs);
       memcpy(_fsv, fsv, sizeof(TxFontStyle));
       txn_set(token_colors, scope, fs);
+
+      // printf("%s > %s\n", scope, match->name);
     }
   }
 

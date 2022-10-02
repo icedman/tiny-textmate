@@ -78,9 +78,6 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
       syntax->include_external = false;
 
       if (syntax->include_scope) {
-        // printf(">me:%x\n", node);
-        // printf("? include %s\n", syntax->include_scope);
-
         char_u ns[TX_SCOPE_NAME_LENGTH] = "";
         char_u scope[TX_SCOPE_NAME_LENGTH] = "";
         strncpy(ns, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
@@ -112,8 +109,6 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
     if (syntax->include) {
       TxSyntaxNode *include_node = syntax->include;
       syntax = txn_syntax_value_proxy(include_node);
-      // printf("include: %s\n", txn_get(syntax->root,
-      // "scopeName")->string_value);
     }
   }
 
@@ -167,12 +162,12 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
 
 #ifdef TX_DEBUG_MATCHES
   if (found) {
-    printf("matches %s (%d-%d) ", pattern, state->matches[0].start,
+    TX_LOG("matches %s (%d-%d) ", pattern, state->matches[0].start,
            state->matches[0].end);
     _BEGIN_COLOR(255, 0, 255)
-    printf("%s", tx_extract_buffer_range(anchor, state->matches[0].start,
+    TX_LOG("%s", tx_extract_buffer_range(anchor, state->matches[0].start,
                                          state->matches[0].end));
-    printf("\n");
+    TX_LOG("\n");
     _END_FORMAT
   }
 #endif
@@ -192,15 +187,10 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   if (syntax->rx_match && find_match(anchor, start, end, syntax->rx_match,
                                      syntax->rxs_match, &match)) {
     match.syntax = syntax;
-    syntax->offset = match.matches[0].start - (start - anchor);
-    syntax->anchor = anchor;
   } else if (syntax->rx_begin &&
              find_match(anchor, start, end, syntax->rx_begin, syntax->rxs_begin,
                         &match)) {
     match.syntax = syntax;
-    syntax->offset = match.matches[0].start - (start - anchor);
-    syntax->anchor = anchor;
-    match.rank++; // begin is preferred over match?
   } else if (syntax->rx_end || syntax->rx_end_dynamic || syntax->rx_while) {
     // skip
   } else {
@@ -274,7 +264,7 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
       syntax->rx_end = NULL;
     }
 
-    // printf("end syntax:%x state:%x\n", syntax, state);
+    // TX_LOG("end syntax:%x state:%x\n", syntax, state);
 
     int len = strlen(syntax->rxs_end) + 128;
     char_u *target = tx_malloc(len * sizeof(char_u));
@@ -316,7 +306,7 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
       }
     }
 
-    // printf(">%s recompiled to %s\n", syntax->rxs_end, target);
+    // TX_LOG(">%s recompiled to %s\n", syntax->rxs_end, target);
     syntax->rx_end = tx_compile_pattern(target);
     regex = syntax->rx_end;
 
@@ -437,7 +427,7 @@ void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
 
     // TxNode *r = (TxNode*)(syntax->root);
     // TxNode *n = txn_get(r, "scopeName");
-    // printf("stack size: %d %s\n", stack->size, n ? n->string_value : NULL);
+    // TX_LOG("stack size: %d %s\n", stack->size, n ? n->string_value : NULL);
 
     TxMatch pattern_match;
     tx_init_match(&pattern_match);

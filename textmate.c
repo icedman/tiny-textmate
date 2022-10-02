@@ -15,12 +15,11 @@ regex_t *tx_compile_pattern(char_u *pattern) {
   if (result != ONIG_NORMAL) {
     OnigUChar s[ONIG_MAX_ERROR_MESSAGE_LEN];
     onig_error_code_to_str(s, result, &einfo);
-    printf("onig error: %s %s\n", s, pattern);
+    TX_LOG("onig error: %s %s\n", s, pattern);
     if (regex) {
       onig_free(regex);
       regex = NULL;
     }
-    // printf("pattern not compiled: %s\n", pattern);
   }
   return regex;
 }
@@ -437,9 +436,9 @@ TxMatch *tx_state_top(TxParserState *stack) {
 }
 
 void tx_stats() {
-  printf("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated,
+  TX_LOG("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated,
          _nodes_freed);
-  printf("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
-  printf("regex matches: %d\n", _match_execs);
-  printf("regex skipped: %d\n", _skipped_match_execs);
+  TX_LOG("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
+  TX_LOG("regex matches: %d\n", _match_execs);
+  TX_LOG("regex skipped: %d\n", _skipped_match_execs);
 }

@@ -95,6 +95,11 @@ typedef struct _TxSyntax {
   char_u *rxs_while;
   bool rx_end_dynamic;
 
+  char_u *last_anchor;
+  char_u *last_start;
+  char_u *last_end;
+  bool last_fail;
+
 } TxSyntax;
 
 typedef struct {

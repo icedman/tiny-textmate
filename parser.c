@@ -184,6 +184,14 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   TxMatch match;
   tx_init_match(&match);
 
+  if (syntax->last_anchor == anchor && 
+      syntax->last_start < start &&
+      syntax->last_end == end &&
+      syntax->last_fail) {
+    _skipped_match_execs ++;
+    return match;
+  }
+
   if (syntax->rx_match && find_match(anchor, start, end, syntax->rx_match,
                                      syntax->rxs_match, &match)) {
     match.syntax = syntax;
@@ -195,6 +203,14 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
     // skip
   } else {
     match = match_first_pattern(anchor, start, end, syntax->patterns);
+  }
+
+  syntax->last_fail = false;
+  if ((syntax->rx_match || syntax->rx_begin) && !match.syntax) {
+    syntax->last_anchor = anchor;
+    syntax->last_start = start;
+    syntax->last_end = end;
+    syntax->last_fail = true;
   }
 
   return match;

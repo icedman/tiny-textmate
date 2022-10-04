@@ -115,8 +115,6 @@ static void collect_capture(TxParseProcessor *self, TxMatch *state) {
 static void collect_dump_line_end(TxParseProcessor *self) {
   TxParserState *line_parser_state = &self->line_parser_state;
 
-  // todo extend unclosed tags
-
   for (int j = 0; j < line_parser_state->size; j++) {
     TxMatch *state = &line_parser_state->states[j];
     for (int i = 0; i < state->size; i++) {
@@ -191,8 +189,9 @@ static void collect_render_line_end(TxParseProcessor *self) {
         uint32_t rgb[] = {255, 255, 255};
         if (txt_color_to_rgb(style.font_style.fg, rgb)) {
           if (self->render_html) {
-            printf("</span><span style='color: rgb(%d,%d,%d)'>", rgb[0], rgb[1],
-                   rgb[2]);
+            if (*c != ' ' && *c != '\t') {
+              printf("</span><span style='color: rgb(%d,%d,%d)'>", rgb[0], rgb[1], rgb[2]);
+            }
           } else {
             _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
           }
@@ -202,13 +201,19 @@ static void collect_render_line_end(TxParseProcessor *self) {
     }
 
     if (self->render_html) {
-      switch (*c) {
-      case '\t':
-        printf("&nbsp;&nbsp;&nbsp;&nbsp;");
-        break;
-      default:
-        printf("%c", *c);
-        break;
+      switch(*c) {
+        case ' ':
+          printf("&nbsp;");
+          break;
+        case '\t':
+          printf("&nbsp;&nbsp;&nbsp;&nbsp;");
+          break;
+        case '<':
+          printf("&lt;");
+          break;
+        default:
+          printf("%c", *c);
+          break;
       }
     } else {
       printf("%c", *c);

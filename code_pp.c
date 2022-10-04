@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
 
   tx_initialize();
 
+  char *path = NULL;
   char *default_grammar_path = NULL;
   char *grammar_path = default_grammar_path;
 

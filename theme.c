@@ -51,7 +51,9 @@ bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
       if (!scope_remap[i].name)
         break;
       if (strstr(scope, scope_remap[i].name)) {
-        return _tx_style_from_scope(scope_remap[i].value, theme, style);
+        if (_tx_style_from_scope(scope_remap[i].value, theme, style)) {
+          return true;
+        }
       }
     }
     // txn_push(theme->unresolved_scopes, txn_new_string(scope));

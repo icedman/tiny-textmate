@@ -91,8 +91,8 @@ do {
 ```
 # TODO
 
-* proper 'end' regex - recompile
 * parser state serialize
+* improve scope resolution
 
 # Reference
 

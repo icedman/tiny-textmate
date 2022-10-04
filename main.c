@@ -36,6 +36,9 @@ int main(int argc, char **argv) {
         strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-z") == 0) {
       _debug = argv[i][1];
     }
+    if (strcmp(argv[i], "-m") == 0) {
+      html = true;
+    }
     if (strcmp(argv[i - 1], "-t") == 0) {
       theme_path = argv[i];
     }
@@ -47,9 +50,6 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[i - 1], "-x") == 0) {
       extensions_path = argv[i];
-    }
-    if (strcmp(argv[i - 1], "-m") == 0) {
-      html = true;
     }
   }
 
@@ -88,7 +88,10 @@ int main(int argc, char **argv) {
   // dump(theme, 0);
 
   TX_TIMER_END
-  printf("grammar loaded at %fsecs\n", _cpu_time_used);
+
+  if (!html) {
+    printf("grammar loaded at %fsecs\n", _cpu_time_used);
+  }
 
   TX_TIMER_RESET
 
@@ -115,6 +118,9 @@ int main(int argc, char **argv) {
   processor.theme = txn_theme_value(theme);
 
   // dump(root, 0);
+  if (html) {
+    printf("<html><body style='background:#303030'>");
+  }
 
   char temp[TX_MAX_LINE_LENGTH];
   FILE *fp = fopen(path, "r");
@@ -130,7 +136,9 @@ int main(int argc, char **argv) {
   }
 
   TX_TIMER_END
-  printf("\nfile %s parsed at %fsecs\n", path, _cpu_time_used);
+  if (!html) {
+    printf("\nfile %s parsed at %fsecs\n", path, _cpu_time_used);
+  }
 
   // dump(tx_global_repository(), 0);
 
@@ -145,8 +153,13 @@ exit:
   }
 
   tx_shutdown();
-  tx_stats();
 
-  printf("\x1b[0");
+  if (html) {
+    printf("</body></html>");
+  } else {
+    tx_stats();
+    printf("\x1b[0");
+  }
+
   return 0;
 }

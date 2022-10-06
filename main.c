@@ -95,6 +95,8 @@ int main(int argc, char **argv) {
 
   TX_TIMER_RESET
 
+  TxParserStateNode *psn = txn_new_parser_state();
+
   TxParserState stack;
   tx_init_parser_state(&stack, txn_syntax_value(root));
 
@@ -130,7 +132,9 @@ int main(int argc, char **argv) {
       fgets(temp, TX_MAX_LINE_LENGTH, fp);
       int len = strlen(temp);
       // printf("%s", temp);
+      txn_parser_state_unserialize(psn, &stack);
       tx_parse_line(temp, temp + len, &stack, &processor);
+      txn_parser_state_serialize(psn, &stack);
     }
     fclose(fp);
   }
@@ -151,6 +155,8 @@ exit:
     }
     txn_free(theme);
   }
+
+  txn_free(psn);
 
   tx_shutdown();
 

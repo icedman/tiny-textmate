@@ -120,7 +120,8 @@ static void collect_dump_line_end(TxParseProcessor *self) {
     for (int i = 0; i < state->size; i++) {
       if (!state->matches[i].scope[0])
         continue;
-      if (state->matches[i].start < 0 || state->matches[i].end < 0)
+      if (state->matches[i].start < 0 || state->matches[i].end < 0 ||
+          !state->matches[i].buffer)
         continue;
       _BEGIN_COLOR(0, 255, 255)
       _PRINT_BUFFER_RANGE(state->matches[i].buffer, state->matches[i].start,
@@ -190,7 +191,8 @@ static void collect_render_line_end(TxParseProcessor *self) {
         if (txt_color_to_rgb(style.font_style.fg, rgb)) {
           if (self->render_html) {
             if (*c != ' ' && *c != '\t') {
-              printf("</span><span style='color: rgb(%d,%d,%d)'>", rgb[0], rgb[1], rgb[2]);
+              printf("</span><span style='color: rgb(%d,%d,%d)'>", rgb[0],
+                     rgb[1], rgb[2]);
             }
           } else {
             _BEGIN_COLOR(rgb[0], rgb[1], rgb[2])
@@ -201,19 +203,19 @@ static void collect_render_line_end(TxParseProcessor *self) {
     }
 
     if (self->render_html) {
-      switch(*c) {
-        case ' ':
-          printf("&nbsp;");
-          break;
-        case '\t':
-          printf("&nbsp;&nbsp;&nbsp;&nbsp;");
-          break;
-        case '<':
-          printf("&lt;");
-          break;
-        default:
-          printf("%c", *c);
-          break;
+      switch (*c) {
+      case ' ':
+        printf("&nbsp;");
+        break;
+      case '\t':
+        printf("&nbsp;&nbsp;&nbsp;&nbsp;");
+        break;
+      case '<':
+        printf("&lt;");
+        break;
+      default:
+        printf("%c", *c);
+        break;
       }
     } else {
       printf("%c", *c);

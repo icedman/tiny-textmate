@@ -70,7 +70,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
                            &syntax->rx_end, &syntax->rx_while};
 
     char **regexes_strings[] = {&syntax->rxs_match, &syntax->rxs_begin,
-                                  &syntax->rxs_end, &syntax->rxs_while};
+                                &syntax->rxs_end, &syntax->rxs_while};
 
     for (int i = 0;; i++) {
       char *key = keys[i];
@@ -115,7 +115,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   // strings
   {
     char *keys[] = {"content",   "fileTypes",     "name",    "contentName",
-                      "scopeName", "keyEquivalent", "comment", 0};
+                    "scopeName", "keyEquivalent", "comment", 0};
 
     for (int i = 0;; i++) {
       char *key = keys[i];
@@ -235,7 +235,7 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char *path) {
   // keys
   {
     char *keys[] = {"name",    "displayName", "description",
-                      "version", "publisher",   0};
+                    "version", "publisher",   0};
     for (int i = 0;; i++) {
       char *key = keys[i];
       if (!key)

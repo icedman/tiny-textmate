@@ -28,6 +28,8 @@ static uint32_t _nodes_allocated = 0;
 static uint32_t _nodes_freed = 0;
 static uint32_t _allocated = 0;
 static uint32_t _freed = 0;
+static size_t _total_state_size = 0;
+size_t _parsed_lines = 0;
 uint32_t _match_execs = 0;
 uint32_t _skipped_match_execs = 0;
 
@@ -435,10 +437,137 @@ TxMatch *tx_state_top(TxParserState *stack) {
   return &stack->states[stack->size - 1];
 }
 
+static void destroy_parser_state(TxNode *node) {
+  TxParserStateEx *parser_state = txn_parser_state_value(node);
+  if (!parser_state->size)
+    return;
+  for (int i = 0; i < parser_state->size; i++) {
+    TxMatchEx *mx = &parser_state->states[i];
+    if (!mx->size)
+      continue;
+    for (int j = 0; j < mx->size; j++) {
+      TxMatchRangeEx *mrx = &mx->matches[j];
+      if (mrx->scope) {
+        // printf("%s\n", mrx->scope);
+        tx_free(mrx->scope);
+      }
+      if (mrx->captured_name) {
+        // printf("%s\n", mrx->captured_name);
+        tx_free(mrx->captured_name);
+      }
+    }
+    tx_free(mx->matches);
+  }
+  tx_free(parser_state->states);
+  parser_state->size = 0;
+}
+
+TxParserStateNode *txn_new_parser_state() {
+  TxParserStateNode *node = tx_malloc(sizeof(TxParserStateNode));
+  _nodes_allocated++;
+  memset(node, 0, sizeof(TxParserStateNode));
+  node->self.type = TxTypeObject;
+  node->self.object_type = TxObjectParserState;
+  node->self.destroy = destroy_parser_state;
+  node->parser_state.self = node;
+  return node;
+}
+
+TxParserStateEx *txn_parser_state_value(TxParserStateNode *node) {
+  return node->self.object_type == TxObjectParserState ? &node->parser_state
+                                                       : NULL;
+}
+
+bool txn_parser_state_serialize(TxParserStateNode *node, TxParserState *value) {
+  if (node->parser_state.size) {
+    destroy_parser_state(node);
+  }
+
+  memset(&node->parser_state, 0, sizeof(TxParserStateEx));
+
+  node->parser_state.size = value->size;
+  node->parser_state.states = tx_malloc(sizeof(TxMatchEx) * value->size);
+  memset(node->parser_state.states, 0, sizeof(TxMatchEx) * value->size);
+
+  _total_state_size += sizeof(TxMatchEx) * value->size;
+
+  for (int i = 0; i < value->size; i++) {
+    TxMatch *m = &value->states[i];
+    TxMatchEx *mx = &node->parser_state.states[i];
+    mx->syntax = m->syntax;
+    mx->size = m->size;
+    if (!m->size)
+      continue;
+    mx->matches = tx_malloc(sizeof(TxMatchRangeEx) * m->size);
+
+    _total_state_size += sizeof(TxMatchRangeEx) * m->size;
+
+    memset(mx->matches, 0, sizeof(TxMatchRangeEx) * m->size);
+    for (int j = 0; j < m->size; j++) {
+      TxMatchRange *mr = &m->matches[j];
+      TxMatchRangeEx *mrx = &mx->matches[j];
+      mrx->start = mr->start;
+      mrx->end = mr->end;
+      size_t len = mr->scope ? strlen(mr->scope) : 0;
+      if (len) {
+        mrx->scope = tx_malloc(sizeof(char) * len);
+        _total_state_size += sizeof(char) * len;
+        strcpy(mrx->scope, mr->scope);
+      }
+      if (m->syntax->rx_end_dynamic && mr->captured_name) {
+        size_t len = strlen(mr->captured_name);
+        if (len) {
+          mrx->captured_name = tx_malloc(sizeof(char) * len);
+          _total_state_size += sizeof(char) * len;
+          strcpy(mrx->captured_name, mr->captured_name);
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+bool txn_parser_state_unserialize(TxParserStateNode *node,
+                                  TxParserState *value) {
+  if (!node->parser_state.size) {
+    return false;
+  }
+
+  memset(value, 0, sizeof(TxParserState));
+
+  value->size = node->parser_state.size;
+  for (int i = 0; i < value->size; i++) {
+    TxMatch *m = &value->states[i];
+    TxMatchEx *mx = &node->parser_state.states[i];
+    m->syntax = mx->syntax;
+    m->size = mx->size;
+    if (!m->size)
+      continue;
+    for (int j = 0; j < m->size; j++) {
+      TxMatchRange *mr = &m->matches[j];
+      TxMatchRangeEx *mrx = &mx->matches[j];
+      mr->start = mrx->start;
+      mr->end = mrx->end;
+      if (mrx->scope) {
+        strncpy(mr->scope, mrx->scope, TX_SCOPE_NAME_LENGTH);
+      }
+      if (mrx->captured_name) {
+        strncpy(mr->scope, mrx->captured_name, TX_SCOPE_NAME_LENGTH);
+      }
+    }
+  }
+
+  return true;
+}
+
 void tx_stats() {
   TX_LOG("-----\nnodes allocated: %d\nnodes freed: %d\n", _nodes_allocated,
          _nodes_freed);
   TX_LOG("-----\nallocated: %d\nfreed: %d\n", _allocated, _freed);
+  TX_LOG("parsed lines: %d\n", _parsed_lines);
   TX_LOG("regex matches: %d\n", _match_execs);
   TX_LOG("regex skipped: %d\n", _skipped_match_execs);
+  TX_LOG("total parser state size: %.2fMB\n",
+         (float)_total_state_size / 1000000);
 }

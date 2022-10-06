@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
-#define TX_SYNTAX_VERBOSE_REGEX
+// #define TX_SYNTAX_VERBOSE_REGEX
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TX_MAX_STACK_DEPTH 64    // json, xml could be very deep
@@ -37,11 +37,12 @@ typedef enum {
   TxObjectPackage,
   TxObjectTheme,
   TxObjectFontStyle,
+  TxObjectParserState,
 } TxObjectType;
 
 typedef struct _TxNode {
   TxValueType type;
-  int32_t object_type;
+  TxObjectType object_type;
 
   // tree
   struct _TxNode *parent;
@@ -141,27 +142,18 @@ typedef struct {
 } TxThemeNode;
 
 typedef struct {
-  int32_t start;
-  int32_t end;
+  size_t start;
+  size_t end;
   TxFontStyle font_style;
 } TxStyleSpan;
 
 typedef struct {
   char *buffer;
-  int32_t start;
-  int32_t end;
+  size_t start;
+  size_t end;
   char scope[TX_SCOPE_NAME_LENGTH];
   char captured_name[TX_CAPTURED_NAME_LENGTH];
 } TxMatchRange;
-
-typedef struct {
-  int32_t start;
-  int32_t end;
-  size_t scope_size;
-  size_t name_size;
-  char *scope;
-  char *captured_name;
-} TxMatchRangeEx;
 
 typedef struct {
   TxSyntax *syntax;
@@ -171,21 +163,34 @@ typedef struct {
 } TxMatch;
 
 typedef struct {
-  TxSyntax *syntax;
-  size_t size;
-  size_t rank;
-  TxMatchRangeEx *matches;
-} TxMatchEx;
-
-typedef struct {
   size_t size;
   TxMatch states[TX_MAX_STACK_DEPTH]; // todo rename to matches
 } TxParserState;
 
+// serialized version of the parser state
 typedef struct {
-  size_t size;
-  TxMatchEx states;
+  int16_t start;
+  int16_t end;
+  char *scope;
+  char *captured_name;
+} TxMatchRangeEx;
+
+typedef struct {
+  TxSyntax *syntax;
+  int16_t size;
+  TxMatchRangeEx *matches;
+} TxMatchEx;
+
+typedef struct {
+  TxNode *self;
+  int16_t size;
+  TxMatchEx *states;
 } TxParserStateEx;
+
+typedef struct {
+  TxNode self;
+  TxParserStateEx parser_state;
+} TxParserStateNode;
 
 typedef enum {
   TxProcessorTypeNull,
@@ -254,13 +259,18 @@ TxTheme *txn_theme_value(TxThemeNode *pkn);
 TxFontStyleNode *txn_new_font_style();
 TxFontStyle *txn_font_style_value(TxFontStyleNode *pkn);
 
+TxParserStateNode *txn_new_parser_state();
+TxParserStateEx *txn_parser_state_value(TxParserStateNode *psn);
+bool txn_parser_state_serialize(TxParserStateNode *psn, TxParserState *value);
+bool txn_parser_state_unserialize(TxParserStateNode *psn, TxParserState *value);
+
 void tx_initialize();
 void tx_shutdown();
 
 TxNode *txn_load_json(char *path);
 
-void tx_parse_line(char *buffer_start, char *buffer_end,
-                   TxParserState *stack, TxParseProcessor *processor);
+void tx_parse_line(char *buffer_start, char *buffer_end, TxParserState *stack,
+                   TxParseProcessor *processor);
 char *tx_extract_buffer_range(char *anchor, size_t start, size_t end);
 
 void tx_init_match(TxMatch *match);

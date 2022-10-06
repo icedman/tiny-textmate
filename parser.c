@@ -7,6 +7,7 @@
 
 extern uint32_t _match_execs;
 extern uint32_t _skipped_match_execs;
+extern uint32_t _parsed_lines;
 
 void dump(TxNode *n, int level);
 
@@ -184,11 +185,9 @@ static TxMatch match_first(char *anchor, char *start, char *end,
   TxMatch match;
   tx_init_match(&match);
 
-  if (syntax->last_anchor == anchor && 
-      syntax->last_start < start &&
-      syntax->last_end == end &&
-      syntax->last_fail) {
-    _skipped_match_execs ++;
+  if (syntax->last_anchor == anchor && syntax->last_start < start &&
+      syntax->last_end == end && syntax->last_fail) {
+    _skipped_match_execs++;
     return match;
   }
 
@@ -262,8 +261,8 @@ typedef struct {
 static const correction_map_t correction_map[] = {
     {"**", "\\*\\*"}, {"*i", "\\*i"}, {"*", "\\*"}, NULL};
 
-static TxMatch match_end(char *anchor, char *start, char *end,
-                         TxSyntax *syntax, TxMatch *state) {
+static TxMatch match_end(char *anchor, char *start, char *end, TxSyntax *syntax,
+                         TxMatch *state) {
   TxMatch match;
   tx_init_match(&match);
 
@@ -400,11 +399,13 @@ static void collect_captures(char *anchor, TxMatch *state,
   }
 }
 
-void tx_parse_line(char *buffer_start, char *buffer_end,
-                   TxParserState *stack, TxParseProcessor *processor) {
+void tx_parse_line(char *buffer_start, char *buffer_end, TxParserState *stack,
+                   TxParseProcessor *processor) {
   char *start = buffer_start;
   char *end = buffer_end;
   char *anchor = buffer_start;
+
+  _parsed_lines++;
 
   if (processor) {
     processor->parser_state = stack;

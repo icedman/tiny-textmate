@@ -10,11 +10,12 @@ static struct {
                    // { "tag", "entity.name.tag" },
                    {"attribute", "entity.other.attribute-name"},
                    {"parameter", "variable.parameter"},
-                   {"preprocessor", "meta.preprocessor"},
+                   {"argument", "variable.parameter"},
+                   {"preprocessor.", "meta.preprocessor"},
                    // { "punctuation", "constant.character.escape" },
                    // { "foreground", "text.source" },
-                   {"block", "text.source"},
-                   {"type", "entity.name.type"},
+                   // {"block", "foreground"},
+                   {"type.", "entity.name.type"},
                    {NULL, NULL}};
 
 bool _tx_style_from_scope(char *scope, TxTheme *theme, TxStyleSpan *style) {
@@ -54,6 +55,7 @@ bool tx_style_from_scope(char *scope, TxTheme *theme, TxStyleSpan *style) {
         if (_tx_style_from_scope(scope_remap[i].value, theme, style)) {
           return true;
         }
+        // printf("[%s] > %s\n", scope, scope_remap[i].name);
       }
     }
     // txn_push(theme->unresolved_scopes, txn_new_string(scope));

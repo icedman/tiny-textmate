@@ -6,11 +6,11 @@
 #include <string.h>
 #include <sys/types.h>
 
-TxSyntaxNode *tx_syntax_from_path(char_u *path) {
-  char_u file_name[MAX_PATH_LENGTH] = "";
+TxSyntaxNode *tx_syntax_from_path(char *path) {
+  char file_name[MAX_PATH_LENGTH] = "";
 
   // extract filename
-  char_u *last_separator = strrchr(path, DIR_SEPARATOR);
+  char *last_separator = strrchr(path, DIR_SEPARATOR);
   if (last_separator) {
     strcpy(file_name, last_separator + 1);
   } else {
@@ -18,7 +18,7 @@ TxSyntaxNode *tx_syntax_from_path(char_u *path) {
   }
 
   // extract extension
-  char_u *extension = strrchr(file_name, '.');
+  char *extension = strrchr(file_name, '.');
   // printf("%s %s\n", file_name, extension);
 
   TxNode *packages = tx_global_packages();
@@ -104,7 +104,7 @@ lang_found:
   return NULL;
 }
 
-TxSyntaxNode *tx_syntax_from_scope(char_u *scope) {
+TxSyntaxNode *tx_syntax_from_scope(char *scope) {
   // check global repository
   TxSyntaxNode *syntax_node = txn_get(tx_global_repository(), scope);
   if (syntax_node) {
@@ -145,16 +145,16 @@ void tx_read_package_dir(char *path) {
   DIR *dp;
   struct dirent *ep;
 
-  char_u base_path[MAX_PATH_LENGTH];
+  char base_path[MAX_PATH_LENGTH];
   sprintf(base_path, "%s/", path);
   dp = opendir(base_path);
   // TX_LOG("%s\n", base_path);
   if (dp != NULL) {
     while ((ep = readdir(dp)) != NULL) {
-      char_u full_path[MAX_PATH_LENGTH] = "";
-      char_u package_path[MAX_PATH_LENGTH] = "";
-      char_u *last_separator = strrchr(base_path, DIR_SEPARATOR);
-      char_u *relative_path = ep->d_name;
+      char full_path[MAX_PATH_LENGTH] = "";
+      char package_path[MAX_PATH_LENGTH] = "";
+      char *last_separator = strrchr(base_path, DIR_SEPARATOR);
+      char *relative_path = ep->d_name;
 
       strcpy(full_path, base_path);
       if (!last_separator) {
@@ -177,7 +177,7 @@ void tx_read_package_dir(char *path) {
   }
 }
 
-TxThemeNode *tx_theme_from_name(char_u *name) {
+TxThemeNode *tx_theme_from_name(char *name) {
   TxThemeNode *res = NULL;
 
   // check packages

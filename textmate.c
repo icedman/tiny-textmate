@@ -6,7 +6,7 @@
 static TxSyntaxNode *global_repository = NULL;
 static TxNode *global_packages = NULL;
 
-regex_t *tx_compile_pattern(char_u *pattern) {
+regex_t *tx_compile_pattern(char *pattern) {
   int len = strlen(pattern);
   regex_t *regex;
   OnigErrorInfo einfo;
@@ -55,7 +55,7 @@ void tx_set_allocator(void *(*custom_malloc)(size_t),
   tx_free = custom_free;
 }
 
-TxNode *txn_new(char_u *name, TxValueType type) {
+TxNode *txn_new(char *name, TxValueType type) {
   TxNode *node = tx_malloc(sizeof(TxNode));
   memset(node, 0, sizeof(TxNode));
   node->type = type;
@@ -64,15 +64,15 @@ TxNode *txn_new(char_u *name, TxValueType type) {
   return node;
 }
 
-char_u *txn_set_name(TxNode *node, char_u *name) {
+char *txn_set_name(TxNode *node, char *name) {
   if (node->name) {
     tx_free(node->name);
     node->name = NULL;
   }
   if (name) {
     size_t len = strlen(name);
-    node->name = tx_malloc(sizeof(char_u) * (len + 1));
-    strcpy((char_u *)node->name, name);
+    node->name = tx_malloc(sizeof(char) * (len + 1));
+    strcpy((char *)node->name, name);
   }
   return node->name;
 }
@@ -83,7 +83,7 @@ TxNode *txn_new_number(int32_t number) {
   return n;
 }
 
-TxNode *txn_new_string(char_u *string) {
+TxNode *txn_new_string(char *string) {
   TxNode *n = txn_new(NULL, TxTypeString);
   txn_set_string_value(n, string);
   return n;
@@ -101,11 +101,11 @@ TxNode *txn_new_value(void *data) {
 
 int32_t txn_number_value(TxNode *node) { return node ? node->number_value : 0; }
 
-char_u *txn_string_value(TxNode *node) {
-  return node ? (char_u *)node->string_value : NULL;
+char *txn_string_value(TxNode *node) {
+  return node ? (char *)node->string_value : NULL;
 }
 
-void txn_set_string_value(TxNode *node, char_u *string) {
+void txn_set_string_value(TxNode *node, char *string) {
   if (!node)
     return;
   if (node->string_value) {
@@ -114,8 +114,8 @@ void txn_set_string_value(TxNode *node, char_u *string) {
   }
   if (string) {
     size_t len = strlen(string);
-    node->string_value = tx_malloc(sizeof(char_u) * (len + 1));
-    strcpy((char_u *)node->string_value, string);
+    node->string_value = tx_malloc(sizeof(char) * (len + 1));
+    strcpy((char *)node->string_value, string);
   }
 }
 
@@ -264,13 +264,13 @@ TxNode *txn_root(TxNode *node) {
   return root;
 }
 
-TxNode *txn_set(TxNode *node, char_u *key, TxNode *value) {
+TxNode *txn_set(TxNode *node, char *key, TxNode *value) {
   txn_set_name(value, key);
   txn_push(node, value);
   return value;
 }
 
-TxNode *txn_get(TxNode *node, char_u *key) {
+TxNode *txn_get(TxNode *node, char *key) {
   TxNode *child = node->first_child;
   while (child) {
     if (strcmp(child->name, key) == 0) {

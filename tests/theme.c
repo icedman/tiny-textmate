@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   };
 
   for(int i=0; ;i++) {
-    char_u *s = scopes[i];
+    char *s = scopes[i];
     if (!s) break;
     printf("-------------\n%s\n", s);
     TxStyleSpan style;

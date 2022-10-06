@@ -17,7 +17,7 @@ static struct {
                    {"type", "entity.name.type"},
                    {NULL, NULL}};
 
-bool _tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
+bool _tx_style_from_scope(char *scope, TxTheme *theme, TxStyleSpan *style) {
   memset(style, 0, sizeof(TxStyleSpan));
 
   bool found = false;
@@ -38,7 +38,7 @@ bool _tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
   return found;
 }
 
-bool tx_style_from_scope(char_u *scope, TxTheme *theme, TxStyleSpan *style) {
+bool tx_style_from_scope(char *scope, TxTheme *theme, TxStyleSpan *style) {
   if (_tx_style_from_scope(scope, theme, style)) {
     return true;
   }
@@ -73,7 +73,7 @@ uint32_t txt_make_color(int r, int g, int b) {
   return (r << 24) | (g << 16) | (b << 8) | 0xff;
 }
 
-bool txt_parse_color(const char_u *color, uint32_t *result) {
+bool txt_parse_color(const char *color, uint32_t *result) {
   if (!color) {
     return 0xffffff;
   }
@@ -84,7 +84,7 @@ bool txt_parse_color(const char_u *color, uint32_t *result) {
   if ((len != 6 && len != 8) || !isxdigit(color[0]) || !isxdigit(color[1])) {
     return false;
   }
-  char_u *ptr;
+  char *ptr;
   uint32_t parsed = strtoul(color, &ptr, 16);
   if (*ptr != '\0') {
     return false;

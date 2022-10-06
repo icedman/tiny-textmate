@@ -10,27 +10,27 @@ extern uint32_t _skipped_match_execs;
 
 void dump(TxNode *n, int level);
 
-char_u *tx_extract_buffer_range(char_u *anchor, size_t start, size_t end) {
-  static char_u temp[TX_SCOPE_NAME_LENGTH];
+char *tx_extract_buffer_range(char *anchor, size_t start, size_t end) {
+  static char temp[TX_SCOPE_NAME_LENGTH];
   strcpy(temp, "");
-  char_u *buffer = anchor;
+  char *buffer = anchor;
   int len = (end - start);
   if (len >= TX_SCOPE_NAME_LENGTH) {
     len = TX_SCOPE_NAME_LENGTH - 1;
   }
-  memcpy(temp, buffer + start, len * sizeof(char_u));
+  memcpy(temp, buffer + start, len * sizeof(char));
   temp[len] = 0;
   return temp;
 }
 
-static bool expand_name(char_u *scope, char_u *target, TxMatch *state) {
+static bool expand_name(char *scope, char *target, TxMatch *state) {
   if (!scope) {
     strncpy(target, "", TX_SCOPE_NAME_LENGTH);
     return false;
   }
-  char_u trailer[TX_SCOPE_NAME_LENGTH];
-  char_u *trailer_advanced = NULL;
-  char_u *placeholder = NULL;
+  char trailer[TX_SCOPE_NAME_LENGTH];
+  char *trailer_advanced = NULL;
+  char *placeholder = NULL;
 
   TxMatchRange *capture_list = state->matches;
 
@@ -46,7 +46,7 @@ static bool expand_name(char_u *scope, char_u *target, TxMatch *state) {
     }
     int capture_idx = atoi(placeholder + 1);
 
-    char_u replace[TX_SCOPE_NAME_LENGTH] = "";
+    char replace[TX_SCOPE_NAME_LENGTH] = "";
     int len = capture_list[capture_idx].end - capture_list[capture_idx].start;
     if (len >= TX_SCOPE_NAME_LENGTH) {
       len = TX_SCOPE_NAME_LENGTH;
@@ -55,7 +55,7 @@ static bool expand_name(char_u *scope, char_u *target, TxMatch *state) {
     if (len != 0) {
       memcpy(replace,
              capture_list[capture_idx].buffer + capture_list[capture_idx].start,
-             len * sizeof(char_u));
+             len * sizeof(char));
     } else {
       expanded = false;
     }
@@ -78,10 +78,10 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
       syntax->include_external = false;
 
       if (syntax->include_scope) {
-        char_u ns[TX_SCOPE_NAME_LENGTH] = "";
-        char_u scope[TX_SCOPE_NAME_LENGTH] = "";
+        char ns[TX_SCOPE_NAME_LENGTH] = "";
+        char scope[TX_SCOPE_NAME_LENGTH] = "";
         strncpy(ns, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
-        char_u *u = strchr(syntax->include_scope, '#');
+        char *u = strchr(syntax->include_scope, '#');
         if (u) {
           ns[u - syntax->include_scope] = 0;
           strncpy(scope, u, TX_SCOPE_NAME_LENGTH);
@@ -115,8 +115,8 @@ TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
   return syntax;
 }
 
-static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
-                       regex_t *regex, char_u *pattern, TxMatch *_state) {
+static bool find_match(char *anchor, char *buffer_start, char *buffer_end,
+                       regex_t *regex, char *pattern, TxMatch *_state) {
   bool found = false;
 
   _match_execs++;
@@ -175,10 +175,10 @@ static bool find_match(char_u *anchor, char_u *buffer_start, char_u *buffer_end,
   return found;
 }
 
-static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
+static TxMatch match_first_pattern(char *anchor, char *start, char *end,
                                    TxNode *patterns);
 
-static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
+static TxMatch match_first(char *anchor, char *start, char *end,
                            TxSyntax *syntax, size_t current_offset,
                            size_t current_rank) {
   TxMatch match;
@@ -216,7 +216,7 @@ static TxMatch match_first(char_u *anchor, char_u *start, char_u *end,
   return match;
 }
 
-static TxMatch match_first_pattern(char_u *anchor, char_u *start, char_u *end,
+static TxMatch match_first_pattern(char *anchor, char *start, char *end,
                                    TxNode *patterns) {
   TxMatch earliest_match;
   tx_init_match(&earliest_match);
@@ -262,7 +262,7 @@ typedef struct {
 static const correction_map_t correction_map[] = {
     {"**", "\\*\\*"}, {"*i", "\\*i"}, {"*", "\\*"}, NULL};
 
-static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
+static TxMatch match_end(char *anchor, char *start, char *end,
                          TxSyntax *syntax, TxMatch *state) {
   TxMatch match;
   tx_init_match(&match);
@@ -283,12 +283,12 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
     // TX_LOG("end syntax:%x state:%x\n", syntax, state);
 
     int len = strlen(syntax->rxs_end) + 128;
-    char_u *target = tx_malloc(len * sizeof(char_u));
-    char_u *tmp = tx_malloc(len * sizeof(char_u));
-    char_u *trailer = tx_malloc(len * sizeof(char_u));
-    char_u capture_key[8];
-    char_u replacement_key[32];
-    char_u replacement[TX_CAPTURED_NAME_LENGTH];
+    char *target = tx_malloc(len * sizeof(char));
+    char *tmp = tx_malloc(len * sizeof(char));
+    char *trailer = tx_malloc(len * sizeof(char));
+    char capture_key[8];
+    char replacement_key[32];
+    char replacement[TX_CAPTURED_NAME_LENGTH];
 
     strcpy(target, syntax->rxs_end);
 
@@ -298,7 +298,7 @@ static TxMatch match_end(char_u *anchor, char_u *start, char_u *end,
       for (int j = 0; j < TX_MAX_MATCHES; j++) {
         sprintf(capture_key, "\\%d", j);
         sprintf(replacement_key, "$%d.", j);
-        char_u *pos = strstr(target, capture_key);
+        char *pos = strstr(target, capture_key);
         if (pos) {
 
           strncpy(replacement, state->matches[j].captured_name,
@@ -356,12 +356,12 @@ static void collect_match(TxSyntax *syntax, TxMatch *state,
   }
 }
 
-static void collect_captures(char_u *anchor, TxMatch *state,
+static void collect_captures(char *anchor, TxMatch *state,
                              TxSyntaxNode *captures,
                              TxParseProcessor *processor) {
-  char_u temp[TX_SCOPE_NAME_LENGTH];
+  char temp[TX_SCOPE_NAME_LENGTH];
 
-  char_u *capture_key[8];
+  char *capture_key[8];
   for (int j = 0; j < TX_MAX_MATCHES; j++) {
     int capture_idx = j;
     sprintf(capture_key, "%d", capture_idx);
@@ -400,11 +400,11 @@ static void collect_captures(char_u *anchor, TxMatch *state,
   }
 }
 
-void tx_parse_line(char_u *buffer_start, char_u *buffer_end,
+void tx_parse_line(char *buffer_start, char *buffer_end,
                    TxParserState *stack, TxParseProcessor *processor) {
-  char_u *start = buffer_start;
-  char_u *end = buffer_end;
-  char_u *anchor = buffer_start;
+  char *start = buffer_start;
+  char *end = buffer_end;
+  char *anchor = buffer_start;
 
   if (processor) {
     processor->parser_state = stack;

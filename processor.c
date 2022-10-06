@@ -8,8 +8,8 @@
 //------------------
 // null processor
 //------------------
-static void null_line_start(TxParseProcessor *self, char_u *buffer_start,
-                            char_u *buffer_end) {}
+static void null_line_start(TxParseProcessor *self, char *buffer_start,
+                            char *buffer_end) {}
 
 static void null_line_end(TxParseProcessor *self) {}
 
@@ -22,8 +22,8 @@ static void null_capture(TxParseProcessor *self, TxMatch *state) {}
 //------------------
 // dump processor
 //------------------
-static void dump_line_start(TxParseProcessor *self, char_u *buffer_start,
-                            char_u *buffer_end) {
+static void dump_line_start(TxParseProcessor *self, char *buffer_start,
+                            char *buffer_end) {
   printf("---------------------\n");
   _PRINT_BUFFER_RANGE(buffer_start, 0, buffer_end - buffer_start)
   printf("\n");
@@ -71,8 +71,8 @@ static void dump_capture(TxParseProcessor *self, TxMatch *state) {
 //------------------
 // collect processor
 //------------------
-static void collect_line_start(TxParseProcessor *self, char_u *buffer_start,
-                               char_u *buffer_end) {
+static void collect_line_start(TxParseProcessor *self, char *buffer_start,
+                               char *buffer_end) {
   self->buffer_start = buffer_start;
   self->buffer_end = buffer_end;
   tx_init_parser_state(&self->line_parser_state, NULL);
@@ -150,7 +150,7 @@ static void collect_render_line_end(TxParseProcessor *self) {
     }
   }
 
-  char_u *c = self->buffer_start;
+  char *c = self->buffer_start;
   int idx = 0;
   TxStyleSpan style;
   while (c < self->buffer_end) {
@@ -246,7 +246,7 @@ static void collect_style_line_end(TxParseProcessor *self) {
     }
   }
 
-  char_u *c = self->buffer_start;
+  char *c = self->buffer_start;
   int idx = 0;
   while (c < self->buffer_end) {
 

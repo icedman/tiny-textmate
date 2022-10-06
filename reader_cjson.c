@@ -14,7 +14,7 @@ static void post_process_syntax(TxSyntaxNode *n, TxSyntaxNode *root) {
     TxNode *repo_node = txn_syntax_value(root)->repository;
     TxNode *include_node = txn_get(n, "include");
     if (include_node && include_node->string_value && !syntax->include) {
-      char_u *path = include_node->string_value;
+      char *path = include_node->string_value;
 
       if (path[0] == '#') {
         path++;
@@ -64,16 +64,16 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // regex
   {
-    char_u *keys[] = {"match", "begin", "end", "while", 0};
+    char *keys[] = {"match", "begin", "end", "while", 0};
 
     regex_t **regexes[] = {&syntax->rx_match, &syntax->rx_begin,
                            &syntax->rx_end, &syntax->rx_while};
 
-    char_u **regexes_strings[] = {&syntax->rxs_match, &syntax->rxs_begin,
+    char **regexes_strings[] = {&syntax->rxs_match, &syntax->rxs_begin,
                                   &syntax->rxs_end, &syntax->rxs_while};
 
     for (int i = 0;; i++) {
-      char_u *key = keys[i];
+      char *key = keys[i];
       if (!key)
         break;
 
@@ -88,7 +88,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 #endif
           if (strcmp(key, "end") == 0) {
             save_regex_string = true;
-            char_u capture_key[8];
+            char capture_key[8];
             for (int j = 0; j < TX_MAX_MATCHES; j++) {
               sprintf(capture_key, "\\%d", j);
               if (strstr(item->valuestring, capture_key)) {
@@ -114,11 +114,11 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // strings
   {
-    char_u *keys[] = {"content",   "fileTypes",     "name",    "contentName",
+    char *keys[] = {"content",   "fileTypes",     "name",    "contentName",
                       "scopeName", "keyEquivalent", "comment", 0};
 
     for (int i = 0;; i++) {
-      char_u *key = keys[i];
+      char *key = keys[i];
       if (!key)
         break;
 
@@ -140,11 +140,11 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
 
   // captures
   {
-    char_u *keys[] = {"captures", "beginCaptures", "endCaptures", 0};
+    char *keys[] = {"captures", "beginCaptures", "endCaptures", 0};
     TxSyntaxNode **capture_nodes[] = {
         &syntax->captures, &syntax->begin_captures, &syntax->end_captures};
     for (int i = 0;; i++) {
-      char_u *key = keys[i];
+      char *key = keys[i];
       if (!key)
         break;
 
@@ -154,7 +154,7 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
         txn_set(node, key, captures);
         *capture_nodes[i] = captures;
 
-        char_u *capture_key[8];
+        char *capture_key[8];
         for (int j = 0; j < TX_MAX_MATCHES; j++) {
           int capture_idx = j;
           sprintf(capture_key, "%d", capture_idx);
@@ -218,8 +218,8 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
  * 1. set pointers to nodes in TxPackage (grammars, languages, themes)
  * 2. languages must resolve scope_name
  */
-static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
-  char_u *base_path = path;
+static void parse_package(cJSON *obj, TxPackageNode *node, char *path) {
+  char *base_path = path;
   TxPackage *package = txn_package_value(node);
   TxNode *grammars_node = txn_get(node, "grammars");
   if (!grammars_node) {
@@ -234,10 +234,10 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
 
   // keys
   {
-    char_u *keys[] = {"name",    "displayName", "description",
+    char *keys[] = {"name",    "displayName", "description",
                       "version", "publisher",   0};
     for (int i = 0;; i++) {
-      char_u *key = keys[i];
+      char *key = keys[i];
       if (!key)
         break;
 
@@ -257,12 +257,12 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
         for (int i = 0; i < sz; i++) {
           cJSON *grammar_item = cJSON_GetArrayItem(grammars, i);
           TxNode *grammar_node = txn_new_object();
-          char_u *keys[] = {"language", "path", "scopeName", 0};
-          char_u *scope_name = NULL;
-          char_u *relative_path = NULL;
+          char *keys[] = {"language", "path", "scopeName", 0};
+          char *scope_name = NULL;
+          char *relative_path = NULL;
 
           for (int j = 0;; j++) {
-            char_u *key = keys[j];
+            char *key = keys[j];
             if (!key)
               break;
 
@@ -280,8 +280,8 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
 
           if (scope_name && relative_path && base_path) {
             txn_set(grammars_node, scope_name, grammar_node);
-            char_u full_path[MAX_PATH_LENGTH] = "";
-            char_u *last_separator = strrchr(base_path, DIR_SEPARATOR);
+            char full_path[MAX_PATH_LENGTH] = "";
+            char *last_separator = strrchr(base_path, DIR_SEPARATOR);
             strncpy(full_path, base_path, MAX_PATH_LENGTH);
             if (!last_separator) {
               sprintf(full_path + strlen(base_path), "%s", relative_path);
@@ -302,10 +302,10 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
         for (int i = 0; i < sz; i++) {
           cJSON *language_item = cJSON_GetArrayItem(languages, i);
           TxNode *language_node = txn_new_object();
-          char_u *keys[] = {"id", 0};
-          char_u *language_id = NULL;
+          char *keys[] = {"id", 0};
+          char *language_id = NULL;
           for (int j = 0;; j++) {
-            char_u *key = keys[j];
+            char *key = keys[j];
             if (!key)
               break;
             cJSON *item = cJSON_GetObjectItem(language_item, key);
@@ -361,8 +361,8 @@ static void parse_package(cJSON *obj, TxPackageNode *node, char_u *path) {
   }
 }
 
-static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
-  char_u *base_path = path;
+static void parse_theme(cJSON *obj, TxThemeNode *node, char *path) {
+  char *base_path = path;
   TxTheme *theme = txn_theme_value(node);
   TxNode *token_colors = theme->token_colors;
 
@@ -420,7 +420,7 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char_u *path) {
 
         for (int j = 0; j < scopes; j++) {
           cJSON *scope_item = NULL;
-          char_u *scope_name = NULL;
+          char *scope_name = NULL;
 
           if (scope->valuestring) {
             scope_name = scope->valuestring;
@@ -486,11 +486,11 @@ static void parse_json(cJSON *obj, TxNode *node) {
 
 // --------------------
 // re-implement these next functions if you want to ditch cjson
-// TxSyntaxNode *txn_load_syntax(char_u *path)
-// TxThemeNode *txn_load_theme(char_u *path)
-// TxPackageNode *txn_load_package(char_u *path)
+// TxSyntaxNode *txn_load_syntax(char *path)
+// TxThemeNode *txn_load_theme(char *path)
+// TxPackageNode *txn_load_package(char *path)
 // --------------------
-TxSyntaxNode *txn_load_syntax(char_u *path) {
+TxSyntaxNode *txn_load_syntax(char *path) {
   FILE *fp = fopen(path, "r");
 
   if (!fp) {
@@ -500,7 +500,7 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   fseek(fp, 0, SEEK_END);
   size_t sz = ftell(fp);
   fseek(fp, 0, SEEK_SET);
-  char_u *content = tx_malloc(sz);
+  char *content = tx_malloc(sz);
   fread(content, sz, 1, fp);
   fclose(fp);
 
@@ -509,7 +509,7 @@ TxSyntaxNode *txn_load_syntax(char_u *path) {
   return root;
 }
 
-TxSyntaxNode *txn_load_syntax_data(char_u *data) {
+TxSyntaxNode *txn_load_syntax_data(char *data) {
   cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
@@ -531,7 +531,7 @@ TxSyntaxNode *txn_load_syntax_data(char_u *data) {
   return root;
 }
 
-TxThemeNode *txn_load_theme(char_u *path) {
+TxThemeNode *txn_load_theme(char *path) {
   FILE *fp = fopen(path, "r");
 
   if (!fp) {
@@ -541,7 +541,7 @@ TxThemeNode *txn_load_theme(char_u *path) {
   fseek(fp, 0, SEEK_END);
   size_t sz = ftell(fp);
   fseek(fp, 0, SEEK_SET);
-  char_u *content = tx_malloc(sz);
+  char *content = tx_malloc(sz);
   fread(content, sz, 1, fp);
   fclose(fp);
 
@@ -550,7 +550,7 @@ TxThemeNode *txn_load_theme(char_u *path) {
   return thm;
 }
 
-TxThemeNode *txn_load_theme_data(char_u *data) {
+TxThemeNode *txn_load_theme_data(char *data) {
   cJSON *json = cJSON_Parse(data);
   if (json == NULL) {
     const char *error_ptr = cJSON_GetErrorPtr();
@@ -561,12 +561,12 @@ TxThemeNode *txn_load_theme_data(char_u *data) {
   }
 
   TxThemeNode *thm = txn_new_theme();
-  parse_theme(json, thm, (char_u *)"data://theme");
+  parse_theme(json, thm, (char *)"data://theme");
   cJSON_free(json);
   return thm;
 }
 
-TxPackageNode *txn_load_package(char_u *path) {
+TxPackageNode *txn_load_package(char *path) {
   FILE *fp = fopen(path, "r");
 
   if (!fp) {
@@ -576,7 +576,7 @@ TxPackageNode *txn_load_package(char_u *path) {
   fseek(fp, 0, SEEK_END);
   size_t sz = ftell(fp);
   fseek(fp, 0, SEEK_SET);
-  char_u *content = tx_malloc(sz);
+  char *content = tx_malloc(sz);
   fread(content, sz, 1, fp);
   fclose(fp);
 
@@ -596,7 +596,7 @@ TxPackageNode *txn_load_package(char_u *path) {
   return pkn;
 }
 
-TxNode *txn_load_json(char_u *path) {
+TxNode *txn_load_json(char *path) {
   FILE *fp = fopen(path, "r");
 
   if (!fp) {
@@ -606,7 +606,7 @@ TxNode *txn_load_json(char_u *path) {
   fseek(fp, 0, SEEK_END);
   size_t sz = ftell(fp);
   fseek(fp, 0, SEEK_SET);
-  char_u *content = tx_malloc(sz);
+  char *content = tx_malloc(sz);
   fread(content, sz, 1, fp);
   fclose(fp);
 

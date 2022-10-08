@@ -89,7 +89,9 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
           if (strcmp(key, "end") == 0) {
             save_regex_string = true;
             char capture_key[8];
-            for (int j = 0; j < TX_MAX_MATCHES; j++) {
+            // check for the presence of references to captures of the begin
+            // match \1, \2, etc.
+            for (int j = 0; j < 8 /*TX_MAX_MATCHES*/; j++) {
               sprintf(capture_key, "\\%d", j);
               if (strstr(item->valuestring, capture_key)) {
                 syntax->rx_end_dynamic = true;
@@ -116,6 +118,9 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
   {
     char *keys[] = {"content",   "fileTypes",     "name",    "contentName",
                     "scopeName", "keyEquivalent", "comment", 0};
+    char **strings[] = {
+        NULL, NULL, &syntax->name, &syntax->content_name, &syntax->scope_name,
+        NULL, NULL};
 
     for (int i = 0;; i++) {
       char *key = keys[i];
@@ -125,14 +130,8 @@ static void parse_syntax(cJSON *obj, TxSyntaxNode *root, TxSyntaxNode *node) {
       cJSON *item = cJSON_GetObjectItem(obj, key);
       if (item && item->valuestring) {
         TxNode *value = txn_set(node, key, txn_new_string(item->valuestring));
-        if (strcmp(key, "name") == 0) {
-          syntax->name = value->string_value;
-        }
-        if (strcmp(key, "contentName") == 0) {
-          syntax->content_name = value->string_value;
-        }
-        if (strcmp(key, "scopeName") == 0) {
-          syntax->scope_name = value->string_value;
+        if (strings[i]) {
+          *strings[i] = value->string_value;
         }
       }
     }
@@ -365,6 +364,25 @@ static void parse_theme(cJSON *obj, TxThemeNode *node, char *path) {
   char *base_path = path;
   TxTheme *theme = txn_theme_value(node);
   TxNode *token_colors = theme->token_colors;
+
+  // todo .. name and description can only be taken from the theme package
+  // {
+  //   char *keys[] = {"name", 0};
+  //   char **strings[] = {&theme->name};
+
+  //   for (int i = 0;; i++) {
+  //     char *key = keys[i];
+  //     if (!key)
+  //       break;
+
+  //     cJSON *item = cJSON_GetObjectItem(obj, key);
+  //     if (item && item->valuestring) {
+  //       TxNode *s = txn_set(node, key, item->valuestring);
+  //       *strings[i] = s->string_value;
+  //       printf(">%s\n", theme->name);
+  //     }
+  //   }
+  // }
 
   {
     cJSON *colors = cJSON_GetObjectItem(obj, "colors");

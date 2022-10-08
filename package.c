@@ -187,6 +187,7 @@ TxThemeNode *tx_theme_from_name(char *name) {
     TxPackage *pk = txn_package_value(child);
     TxNode *themes = pk->themes;
     if (themes) {
+      int strcasecmp(const char *s1, const char *s2);
     }
     child = child->next_sibling;
   }

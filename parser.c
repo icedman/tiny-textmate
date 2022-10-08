@@ -5,8 +5,12 @@
 
 // #define TX_DEBUG_MATCHES
 
+// #define TX_OPTIMIZE_MATCH
+#define TX_OPTIMIZE_MAX_ANCHOR_DISTANCE 32
+#define TX_OPTIMIZE_MAX_LINE_LENGTH 256
+
 extern uint32_t _match_execs;
-extern uint32_t _skipped_match_execs;
+extern uint32_t _match_skips;
 extern uint32_t _parsed_lines;
 
 void dump(TxNode *n, int level);
@@ -72,45 +76,45 @@ static bool expand_name(char *scope, char *target, TxMatch *state) {
 
 TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node) {
   TxSyntax *syntax = txn_syntax_value(node);
+  if (!syntax) {
+    return NULL;
+  }
 
-  if (syntax) {
-    if (!syntax->include && syntax->include_external) {
+  if (syntax && !syntax->include && syntax->include_external) {
 
-      syntax->include_external = false;
+    syntax->include_external = false;
 
-      if (syntax->include_scope) {
-        char ns[TX_SCOPE_NAME_LENGTH] = "";
-        char scope[TX_SCOPE_NAME_LENGTH] = "";
-        strncpy(ns, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
-        char *u = strchr(syntax->include_scope, '#');
-        if (u) {
-          ns[u - syntax->include_scope] = 0;
-          strncpy(scope, u, TX_SCOPE_NAME_LENGTH);
-        }
-
-        TxSyntaxNode *target_node = NULL;
-
-        if (strlen(ns) > 0 && ns[0] != '#') {
-          target_node = tx_syntax_from_scope(ns);
-        } else {
-          strncpy(scope, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
-        }
-
-        if (strlen(scope) > 0) {
-          TxNode *root =
-              txn_syntax_value(target_node ? target_node : node)->root;
-          TxNode *repo_node = txn_get(root, "repository");
-          target_node = repo_node ? txn_get(repo_node, scope + 1) : NULL;
-        }
-
-        syntax->include = target_node;
+    if (syntax->include_scope) {
+      char ns[TX_SCOPE_NAME_LENGTH] = "";
+      char scope[TX_SCOPE_NAME_LENGTH] = "";
+      strncpy(ns, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
+      char *u = strchr(syntax->include_scope, '#');
+      if (u) {
+        ns[u - syntax->include_scope] = 0;
+        strncpy(scope, u, TX_SCOPE_NAME_LENGTH);
       }
-    }
 
-    if (syntax->include) {
-      TxSyntaxNode *include_node = syntax->include;
-      syntax = txn_syntax_value_proxy(include_node);
+      TxSyntaxNode *target_node = NULL;
+
+      if (strlen(ns) > 0 && ns[0] != '#') {
+        target_node = tx_syntax_from_scope(ns);
+      } else {
+        strncpy(scope, syntax->include_scope, TX_SCOPE_NAME_LENGTH);
+      }
+
+      if (strlen(scope) > 0) {
+        TxNode *root = txn_syntax_value(target_node ? target_node : node)->root;
+        TxNode *repo_node = txn_get(root, "repository");
+        target_node = repo_node ? txn_get(repo_node, scope + 1) : NULL;
+      }
+
+      syntax->include = target_node;
     }
+  }
+
+  if (syntax->include) {
+    TxSyntaxNode *include_node = syntax->include;
+    syntax = txn_syntax_value_proxy(include_node);
   }
 
   return syntax;
@@ -134,12 +138,31 @@ static bool find_match(char *anchor, char *buffer_start, char *buffer_end,
   unsigned char *start, *range, *end;
   unsigned int onig_options = ONIG_OPTION_NONE;
 
+  size_t offset = 0;
+#ifdef TX_OPTIMIZE_MATCH
+  // optimization: move anchor forward if its is too far behind already
+  offset = buffer_start - anchor;
+  if (offset < TX_OPTIMIZE_MAX_ANCHOR_DISTANCE + 2) {
+    offset = 0;
+  } else {
+    offset = (buffer_start - TX_OPTIMIZE_MAX_ANCHOR_DISTANCE) - anchor;
+  }
+#endif
+
   int count = 0;
 
-  UChar *str = anchor;
+  UChar *str = anchor + offset;
   end = buffer_end;
   start = buffer_start;
   range = end;
+
+#ifdef TX_OPTIMIZE_MATCH
+optimization:
+  cap if line is too long if (range - start > TX_OPTIMIZE_MAX_LINE_LENGTH) {
+    end = start + TX_OPTIMIZE_MAX_LINE_LENGTH;
+    range = end;
+  }
+#endif
 
   r = onig_search(regex, str, end, start, range, region, onig_options);
   if (r != ONIG_MISMATCH) {
@@ -150,8 +173,8 @@ static bool find_match(char *anchor, char *buffer_start, char *buffer_end,
         state->rank++;
       }
       state->matches[i].buffer = anchor;
-      state->matches[i].start = region->beg[i];
-      state->matches[i].end = region->end[i];
+      state->matches[i].start = region->beg[i] + offset;
+      state->matches[i].end = region->end[i] + offset;
     }
   }
 
@@ -185,9 +208,12 @@ static TxMatch match_first(char *anchor, char *start, char *end,
   TxMatch match;
   tx_init_match(&match);
 
+  // optimization: skip previous match failure
+  // warning, a change in contents from anchor to end could result in a false
+  // negative
   if (syntax->last_anchor == anchor && syntax->last_start < start &&
       syntax->last_end == end && syntax->last_fail) {
-    _skipped_match_execs++;
+    _match_skips++;
     return match;
   }
 
@@ -206,6 +232,7 @@ static TxMatch match_first(char *anchor, char *start, char *end,
 
   syntax->last_fail = false;
   if ((syntax->rx_match || syntax->rx_begin) && !match.syntax) {
+    // cache match failure
     syntax->last_anchor = anchor;
     syntax->last_start = start;
     syntax->last_end = end;

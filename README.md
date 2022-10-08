@@ -11,7 +11,7 @@
 ## parse algorithm (based on textpow)
 
 ```c
-// a syntax is a regex pattern to match (3 cases: begin, end, match; there is a 'while'?)
+// a syntax is a regex pattern to match (begin/end, begin/while or a simple match)
 struct syntax_t {
     regex_t begin
     regex_t end
@@ -46,12 +46,21 @@ do {
     }
 
     if (top.end) {
-        // match_end could consider captures from match_begin?
+        // match_end could consider captures from match_begin
         end_match = match_end()
     }
 
-    // pattern matches are prioritizes over ending matches
-    if (end_match && (!pattern_match || pattern_match.first <= end_match.first )) {
+    if (top.while) {
+        while_match = match_while()
+    }
+
+    if (top.while && !while_match) {
+        // a begin/while pattern exits when while_match fails
+        stack_pop()
+
+    } else if (end_match && (!pattern_match || pattern_match.first <= end_match.first )) {
+        // pattern matches are prioritizes over ending matches
+
         pattern_match = end_match
         start = pattern_match.first
         end = pattern_match.last
@@ -88,10 +97,20 @@ do {
 
 } while(true)
 
+
+process_captures(sytanx, captures)
+{   
+    // assign scopes to captures
+
+    // can be recursive if it contains matches 
+    if (captures.pattern) {
+        process_captures()
+    }
+}
+
 ```
 # TODO
 
-* parser state serialize
 * improve scope resolution
 
 # Reference

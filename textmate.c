@@ -447,7 +447,7 @@ static void destroy_parser_state(TxNode *node) {
       continue;
     for (int j = 0; j < mx->size; j++) {
       TxMatchRangeEx *mrx = &mx->matches[j];
-      if (mrx->scope) {
+      if (mrx->scope && mrx->scope_ref) {
         // printf("%s\n", mrx->scope);
         tx_free(mrx->scope);
       }

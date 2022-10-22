@@ -7,9 +7,19 @@
 #include <string.h>
 #include <sys/types.h>
 
+static size_t _unnamed = 0;
+
 static void post_process_syntax(TxSyntaxNode *n, TxSyntaxNode *root) {
   TxSyntax *syntax = txn_syntax_value(n);
   if (syntax) {
+#ifdef TX_SYNTAX_ASSIGN_NAME
+    if (!syntax->name) {
+      char temp[TX_SCOPE_NAME_LENGTH];
+      sprintf(temp, "pattern_%d", _unnamed++);
+      TxNode *_name = txn_set(n, "name", txn_new_string(temp));
+      syntax->name = _name->string_value;
+    }
+#endif
     syntax->root = root;
     TxNode *repo_node = txn_syntax_value(root)->repository;
     TxNode *include_node = txn_get(n, "include");

@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 #define TX_COLORIZE
-// #define TX_SYNTAX_VERBOSE_REGEX
+#define TX_SYNTAX_VERBOSE_REGEX
+// #define TX_SYNTAX_ASSIGN_NAME
 #define TX_SYNTAX_RECOMPILE_REGEX_END
 
 #define TX_MAX_STACK_DEPTH 64    // json, xml could be very deep
@@ -173,6 +174,7 @@ typedef struct {
   int16_t start;
   int16_t end;
   char *scope;
+  bool scope_ref;
   char *captured_name;
 } TxMatchRangeEx;
 
@@ -248,6 +250,7 @@ TxSyntaxNode *txn_new_syntax();
 TxSyntaxNode *txn_load_syntax(char *path);
 TxSyntaxNode *txn_load_syntax_data(char *data);
 TxSyntax *txn_syntax_value(TxSyntaxNode *syn);
+TxSyntax *txn_syntax_value_proxy(TxSyntaxNode *node);
 
 TxPackageNode *txn_new_package();
 TxPackageNode *txn_load_package(char *path);

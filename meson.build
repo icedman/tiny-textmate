@@ -33,7 +33,7 @@ munit_inc = [
   './munit'
 ]
 
-onigmo_dep = dependency('onigmo', required: true, disabler: true)
+onigmo_dep = dependency('onigmo', required: false, disabler: false)
 
 executable('tiny',
   'main.c',
@@ -100,6 +100,15 @@ executable('sample_json',
 
 executable('sample_regex',
   'tests/regex.c',
+  dependencies: [ onigmo_dep ]
+)
+
+executable('g2v',
+  'grammar_to_vim.c',
+  'tests/dump.c',
+  cjson_files,
+  textmate_files,
+  include_directories: [ cjson_inc, textmate_inc ],
   dependencies: [ onigmo_dep ]
 )
 

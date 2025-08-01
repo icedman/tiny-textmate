@@ -40,16 +40,16 @@ typedef enum {
   TxObjectParserState,
 } TxObjectType;
 
-typedef struct _TxNode {
+typedef struct TxNode {
   TxValueType type;
   TxObjectType object_type;
 
   // tree
-  struct _TxNode *parent;
-  struct _TxNode *prev_sibling;
-  struct _TxNode *next_sibling;
-  struct _TxNode *first_child;
-  struct _TxNode *last_child;
+  struct TxNode *parent;
+  struct TxNode *prev_sibling;
+  struct TxNode *next_sibling;
+  struct TxNode *first_child;
+  struct TxNode *last_child;
   size_t size;
 
   // data
@@ -59,10 +59,10 @@ typedef struct _TxNode {
   char *string_value;
   void *data;
 
-  void (*destroy)(struct _TxNode *);
+  void (*destroy)(struct TxNode *);
 } TxNode;
 
-typedef struct _TxSyntax {
+typedef struct TxSyntax {
   TxNode *self;
   TxNode *root;
   TxNode *repository;
@@ -202,15 +202,15 @@ typedef enum {
   TxProcessorTypeCollectAndStyle,
 } TxProcessorType;
 
-typedef struct _TxParseProcessor {
+typedef struct TxParseProcessor {
   TxParserState *parser_state;
   TxParserState line_parser_state;
-  void (*line_start)(struct _TxParseProcessor *self, char *buffer_start,
+  void (*line_start)(struct TxParseProcessor *self, char *buffer_start,
                      char *buffer_end);
-  void (*line_end)(struct _TxParseProcessor *self);
-  void (*open_tag)(struct _TxParseProcessor *self, TxMatch *state);
-  void (*close_tag)(struct _TxParseProcessor *self, TxMatch *state);
-  void (*capture)(struct _TxParseProcessor *self, TxMatch *state);
+  void (*line_end)(struct TxParseProcessor *self);
+  void (*open_tag)(struct TxParseProcessor *self, TxMatch *state);
+  void (*close_tag)(struct TxParseProcessor *self, TxMatch *state);
+  void (*capture)(struct TxParseProcessor *self, TxMatch *state);
   char *buffer_start;
   char *buffer_end;
   TxTheme *theme;

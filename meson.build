@@ -4,16 +4,16 @@ project('text-edit', 'c', 'cpp',
 )
 
 textmate_files = [
-  'textmate.c',
-  'processor.c',
-  'parser.c',
-  'theme.c',
-  'package.c',
-  'reader_cjson.c'
+  './src/textmate.c',
+  './src/processor.c',
+  './src/parser.c',
+  './src/theme.c',
+  './src/package.c',
+  './src/reader_cjson.c'
 ]
 
 textmate_inc = [
-  './'
+  './src'
 ]
 
 cjson_files = [
@@ -102,7 +102,7 @@ onigmo_inc = [
 # onigmo_dep = dependency('onigmo', required: true, disabler: true)
 
 executable('tiny',
-  'main.c',
+  'src/main.c',
   'tests/dump.c',
   cjson_files,
   onigmo_files,
@@ -113,7 +113,7 @@ executable('tiny',
 )
 
 executable('code_pp',
-  'code_pp.c',
+  'src/code_pp.c',
   'tests/dump.c',
   cjson_files,
   onigmo_files,
@@ -178,20 +178,22 @@ executable('sample_json',
   # dependencies: [ onigmo_dep ]
 )
 
-# executable('sample_regex',
-#   'tests/regex.c',
-#   c_args: ['-Wno-incompatible-pointer-types', '-Wno-missing-field-initializers'],
-#   # dependencies: [ onigmo_dep ]
-# )
+executable('sample_regex',
+  'tests/regex.c',
+  onigmo_files,
+  include_directories: [ onigmo_inc ],
+  c_args: ['-Wno-incompatible-pointer-types', '-Wno-missing-field-initializers'],
+  # dependencies: [ onigmo_dep ]
+)
 
-# executable('tests',
-#   'tests/tests.c',
-#   'tests/dump.c',
-#   munit_files,
-#   cjson_files,
-  # onigmo_files,
-#   textmate_files,
-#   include_directories: [ munit_inc, onigmo_inc, cjson_inc, textmate_inc ],
-#   c_args: ['-Wno-incompatible-pointer-types', '-Wno-missing-field-initializers'],
-#   # dependencies: [ onigmo_dep ]
-# )
+executable('tests',
+  'tests/tests.c',
+  'tests/dump.c',
+  munit_files,
+  cjson_files,
+  onigmo_files,
+  textmate_files,
+  include_directories: [ munit_inc, onigmo_inc, cjson_inc, textmate_inc ],
+  c_args: ['-Wno-incompatible-pointer-types', '-Wno-missing-field-initializers'],
+  # dependencies: [ onigmo_dep ]
+)

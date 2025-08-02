@@ -1,3 +1,5 @@
 */sqlite3.c
 build
+zig-out
+.zig-cache
 *.log

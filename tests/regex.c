@@ -1,6 +1,7 @@
 #include "onigmognu.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <memory.h>
 
 regex_t *compile_pattern(char *pattern) {
   regex_t *regex;

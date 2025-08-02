@@ -27,7 +27,8 @@ int main(int argc, char **argv) {
     "meta.flow-sequence.yaml",
     "meta.paragraph.markdown",
     "markup.list.unnumbered.markdown",
-    "markup.list.numbered.markdown"
+    "markup.list.numbered.markdown",
+    0
   };
 
   for(int i=0; ;i++) {
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     tx_style_from_scope(s, t, &style);
   }
 
-  // dump(thm, 0);
+  dump(thm, 0);
 
   txn_free(thm);
   tx_shutdown();

@@ -288,7 +288,7 @@ static void destroy_syntax(TxNode *node) {
   TxSyntax *syntax = txn_syntax_value(syntax_node);
 
   regex_t **regexes[] = {&syntax->rx_match, &syntax->rx_begin, &syntax->rx_end,
-                         (void*)-1};
+                         (void *)-1};
 
   for (int i = 0;; i++) {
     if (regexes[i] == -1)

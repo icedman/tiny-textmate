@@ -482,10 +482,12 @@ static void parse_json(cJSON *obj, TxNode *node) {
     cJSON *child = obj->child;
     while (child) {
       if (cJSON_IsString(child)) {
-        txn_set(node, child->string, (void*)txn_new_string((void*)child->valuestring));
+        txn_set(node, child->string,
+                (void *)txn_new_string((void *)child->valuestring));
       }
       if (cJSON_IsNumber(child)) {
-        txn_set(node, child->string, (void*)txn_number_value((void*)child->valueint));
+        txn_set(node, child->string,
+                (void *)txn_number_value((void *)child->valueint));
       }
       if (cJSON_IsObject(child)) {
         TxNode *child_obj = txn_new_object();

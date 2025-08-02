@@ -134,7 +134,7 @@ typedef struct {
   TxNode *self;
   TxNode *token_colors;
   TxNode *unresolved_scopes;
-  char* name;
+  char *name;
 } TxTheme;
 
 typedef struct {

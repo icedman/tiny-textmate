@@ -3,7 +3,9 @@
 #include <string.h>
 
 #define _PRINT_BUFFER_RANGE(B, S, E)                                           \
-  { printf("%s", tx_extract_buffer_range(B, S, E)); }
+  {                                                                            \
+    printf("%s", tx_extract_buffer_range(B, S, E));                            \
+  }
 
 //------------------
 // null processor
